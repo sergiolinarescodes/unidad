@@ -2,7 +2,8 @@
   "name": "Unidad.Core.Runtime",
   "rootNamespace": "Unidad.Core",
   "references": [
-    "Reflex"
+    "Reflex",
+    "TextAnimationsForUIToolkit"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

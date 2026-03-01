@@ -17,5 +17,8 @@ namespace Unidad.Core.Testing
 
         /// <summary>Verify all expectations and return result.</summary>
         ScenarioVerificationResult Verify();
+
+        /// <summary>Clean up all resources created by this scenario (GameObjects, services, etc.).</summary>
+        void Reset();
     }
 }
