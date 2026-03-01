@@ -90,6 +90,9 @@ namespace Unidad.Core.Bootstrap
             var debugService = new DebugModeService();
             builder.AddSingleton(_ => debugService, typeof(DebugModeService));
 
+            // UI Services
+            InstallUIServices(builder);
+
             // Animation (default: real animations — subclass can override for instant in tests)
             InstallAnimationResolver(builder);
         }
@@ -99,6 +102,20 @@ namespace Unidad.Core.Bootstrap
         /// Default does nothing — games should provide their own implementation.
         /// </summary>
         protected virtual void InstallAnimationResolver(ContainerBuilder builder) { }
+
+        /// <summary>
+        /// Install UI system services (theme, text animation, element animator, dialog).
+        /// Override to customize or skip UI services.
+        /// Called from InstallCoreServices before animation resolver.
+        /// </summary>
+        protected virtual void InstallUIServices(ContainerBuilder builder)
+        {
+            var uiInstaller = new UI.UISystemInstaller();
+            uiInstaller.Install(builder);
+
+            var dialogInstaller = new UI.DialogSystemInstaller();
+            dialogInstaller.Install(builder);
+        }
 
         /// <summary>
         /// Spawns the TickRunner MonoBehaviour and wires it to all registered ITickable services.

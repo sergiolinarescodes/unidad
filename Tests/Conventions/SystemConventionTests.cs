@@ -14,13 +14,16 @@ namespace Unidad.Core.Tests.Tests.Conventions
     [TestFixture]
     public class SystemConventionTests
     {
+        private static readonly string[] AllowedAssemblyPrefixes =
+        {
+            "Unidad.Core",
+            "Experimental"
+        };
+
         private static IEnumerable<Type> GetAllGameTypes()
         {
             return AppDomain.CurrentDomain.GetAssemblies()
-                .Where(a => !a.FullName.StartsWith("System") &&
-                            !a.FullName.StartsWith("Unity") &&
-                            !a.FullName.StartsWith("nunit") &&
-                            !a.FullName.StartsWith("mscorlib"))
+                .Where(a => AllowedAssemblyPrefixes.Any(p => a.GetName().Name.StartsWith(p)))
                 .SelectMany(a =>
                 {
                     try { return a.GetTypes(); }
