@@ -1,0 +1,20 @@
+{
+  "name": "com.unidad.core",
+  "version": "0.1.0",
+  "displayName": "Unidad Core",
+  "description": "Core framework for AI-driven Unity game development. Provides EventBus, HistoryService, ObjectPool, DI extensions, testing infrastructure, and pattern templates.",
+  "unity": "6000.0",
+  "documentationUrl": "",
+  "author": {
+    "name": "Unidad",
+    "url": ""
+  },
+  "dependencies": {},
+  "keywords": [
+    "framework",
+    "eventbus",
+    "testing",
+    "patterns",
+    "pooling"
+  ]
+}
