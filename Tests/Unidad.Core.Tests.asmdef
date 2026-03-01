@@ -2,7 +2,8 @@
   "name": "Unidad.Core.Tests",
   "rootNamespace": "Unidad.Core.Tests",
   "references": [
-    "Unidad.Core.Runtime"
+    "Unidad.Core.Runtime",
+    "TextAnimationsForUIToolkit"
   ],
   "includePlatforms": [
     "Editor"

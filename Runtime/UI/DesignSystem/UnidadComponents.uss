@@ -1,0 +1,184 @@
+/* ===== UnidadButton ===== */
+.unidad-button {
+    background-color: var(--color-primary);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    border-width: 0;
+    transition: scale 150ms ease-out-cubic, opacity 150ms ease-out-cubic, background-color 150ms ease-out-cubic;
+    scale: 1 1;
+}
+
+.unidad-button:hover {
+    scale: 1.05 1.05;
+    background-color: #5AA0E9;
+}
+
+.unidad-button--pressed {
+    scale: 0.95 0.95;
+}
+
+.unidad-button--disabled {
+    opacity: 0.5;
+}
+
+.unidad-button--loading {
+    opacity: 0.7;
+}
+
+.unidad-button--secondary {
+    background-color: var(--color-secondary);
+}
+
+.unidad-button--success {
+    background-color: var(--color-success);
+}
+
+.unidad-button--warning {
+    background-color: var(--color-warning);
+}
+
+.unidad-button--danger {
+    background-color: var(--color-error);
+}
+
+/* ===== UnidadLabel ===== */
+.unidad-label {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-md);
+}
+
+.unidad-label--secondary {
+    color: var(--color-text-secondary);
+}
+
+.unidad-label--muted {
+    color: var(--color-text-muted);
+}
+
+.unidad-label--xs { font-size: var(--font-size-xs); }
+.unidad-label--sm { font-size: var(--font-size-sm); }
+.unidad-label--lg { font-size: var(--font-size-lg); }
+.unidad-label--xl { font-size: var(--font-size-xl); }
+.unidad-label--xxl { font-size: var(--font-size-xxl); }
+
+/* ===== UnidadCard ===== */
+.unidad-card {
+    background-color: var(--color-bg-surface);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    border-width: var(--border-width);
+    border-color: rgba(255, 255, 255, 0.1);
+    transition: scale 150ms ease-out-cubic, opacity 300ms ease-out-cubic;
+    scale: 1 1;
+    opacity: 1;
+}
+
+.unidad-card:hover {
+    scale: 1.02 1.02;
+}
+
+.unidad-card--entering {
+    scale: 0.9 0.9;
+    opacity: 0;
+}
+
+.unidad-card--exiting {
+    scale: 0.9 0.9;
+    opacity: 0;
+}
+
+/* ===== UnidadProgressBar ===== */
+.unidad-progress {
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.unidad-progress__fill {
+    height: 100%;
+    background-color: var(--color-primary);
+    border-radius: var(--radius-sm);
+    transition: width 300ms ease-out-cubic;
+}
+
+.unidad-progress__fill--success {
+    background-color: var(--color-success);
+}
+
+.unidad-progress__fill--warning {
+    background-color: var(--color-warning);
+}
+
+.unidad-progress__fill--danger {
+    background-color: var(--color-error);
+}
+
+/* ===== Dialog ===== */
+.unidad-dialog-backdrop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+
+.unidad-dialog {
+    background-color: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    min-width: 300px;
+    max-width: 500px;
+    border-width: var(--border-width);
+    border-color: rgba(255, 255, 255, 0.15);
+    transition: scale 300ms ease-out-cubic, opacity 300ms ease-out-cubic;
+}
+
+.unidad-dialog__title {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-md);
+    -unity-font-style: bold;
+}
+
+.unidad-dialog__body {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.unidad-dialog__buttons {
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+.unidad-dialog__buttons > .unidad-button {
+    margin-left: var(--spacing-sm);
+}
+
+/* ===== Floating Text ===== */
+.unidad-floating-text {
+    position: absolute;
+    -unity-text-align: middle-center;
+    font-size: var(--font-size-lg);
+    color: var(--color-text-primary);
+    -unity-font-style: bold;
+}
+
+.unidad-floating-text--damage {
+    color: #FF4444;
+}
+
+.unidad-floating-text--heal {
+    color: #44FF44;
+}
+
+.unidad-floating-text--critical {
+    font-size: var(--font-size-xl);
+    color: #FFD700;
+}

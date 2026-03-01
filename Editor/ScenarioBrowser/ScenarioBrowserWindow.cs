@@ -15,6 +15,9 @@ namespace Unidad.Core.Editor.Editor.ScenarioBrowser
     /// </summary>
     public class ScenarioBrowserWindow : EditorWindow
     {
+        private const string UIToolkitFolder = "Assets/UI Toolkit";
+        private const string PanelSettingsPath = "Assets/UI Toolkit/ScenarioPanelSettings.asset";
+
         private TextField _searchField;
         private ScrollView _scenarioList;
         private VisualElement _inspectorContainer;
@@ -22,8 +25,10 @@ namespace Unidad.Core.Editor.Editor.ScenarioBrowser
 
         private List<ScenarioGroup> _allGroups = new();
         private ITestScenario _selectedScenario;
+        private ITestScenario _lastExecutedScenario;
         private ScenarioParameterOverrides _currentOverrides;
         private ScenarioVerificationResult _lastResult;
+        private bool _pendingRunAfterPlayMode;
 
         [MenuItem("Window/Unidad/Scenario Browser")]
         public static void ShowWindow()
@@ -31,6 +36,26 @@ namespace Unidad.Core.Editor.Editor.ScenarioBrowser
             var window = GetWindow<ScenarioBrowserWindow>();
             window.titleContent = new GUIContent("Scenario Browser");
             window.minSize = new Vector2(400, 600);
+        }
+
+        private void OnEnable()
+        {
+            EditorApplication.playModeStateChanged += OnPlayModeChanged;
+        }
+
+        private void OnDisable()
+        {
+            EditorApplication.playModeStateChanged -= OnPlayModeChanged;
+        }
+
+        private void OnPlayModeChanged(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.EnteredPlayMode && _pendingRunAfterPlayMode)
+            {
+                _pendingRunAfterPlayMode = false;
+                // Delay one frame so Play Mode is fully initialized
+                EditorApplication.delayCall += ExecuteSelectedScenario;
+            }
         }
 
         private void CreateGUI()
@@ -254,9 +279,30 @@ namespace Unidad.Core.Editor.Editor.ScenarioBrowser
         {
             if (_selectedScenario == null) return;
 
+            // Enter Play Mode if not already — text animations require Time.time to advance
+            if (!EditorApplication.isPlaying)
+            {
+                _pendingRunAfterPlayMode = true;
+                EditorApplication.isPlaying = true;
+                return;
+            }
+
+            ExecuteSelectedScenario();
+        }
+
+        private void ExecuteSelectedScenario()
+        {
+            EnsurePanelSettings();
+            EnsureStyleSheets();
+
+            // Clean up previous scenario before running a new one
+            if (_lastExecutedScenario != null && _lastExecutedScenario != _selectedScenario)
+                _lastExecutedScenario.Reset();
+
             try
             {
                 _selectedScenario.Execute(_currentOverrides);
+                _lastExecutedScenario = _selectedScenario;
                 _lastResult = _selectedScenario.Verify();
                 ShowResults();
             }
@@ -304,6 +350,106 @@ namespace Unidad.Core.Editor.Editor.ScenarioBrowser
         private void ClearResults()
         {
             _resultsContainer.Clear();
+        }
+
+        /// <summary>
+        /// Finds or creates a real PanelSettings asset on disk.
+        /// In-memory ScriptableObject.CreateInstance does not work — Unity requires real assets.
+        /// Tries to find Unity's default runtime ThemeStyleSheet so text has a font to render with.
+        /// Falls back to no theme (DataDrivenScenario sets a font on root as safety net).
+        /// </summary>
+        private static void EnsurePanelSettings()
+        {
+            if (DataDrivenScenario.SharedPanelSettings != null)
+                return;
+
+            var defaultTheme = FindDefaultRuntimeTheme();
+
+            // Try loading our known asset first
+            var existing = AssetDatabase.LoadAssetAtPath<PanelSettings>(PanelSettingsPath);
+            if (existing != null)
+            {
+                // Assign the real default theme (or clear a broken custom one)
+                if (existing.themeStyleSheet != defaultTheme)
+                {
+                    existing.themeStyleSheet = defaultTheme;
+                    EditorUtility.SetDirty(existing);
+                    AssetDatabase.SaveAssetIfDirty(existing);
+                }
+
+                DataDrivenScenario.SharedPanelSettings = existing;
+                return;
+            }
+
+            // Create folder if needed
+            if (!AssetDatabase.IsValidFolder(UIToolkitFolder))
+                AssetDatabase.CreateFolder("Assets", "UI Toolkit");
+
+            var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
+            panelSettings.themeStyleSheet = defaultTheme;
+            panelSettings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            panelSettings.referenceResolution = new Vector2Int(1920, 1080);
+            panelSettings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
+            panelSettings.match = 0.5f;
+            AssetDatabase.CreateAsset(panelSettings, PanelSettingsPath);
+            AssetDatabase.SaveAssets();
+
+            DataDrivenScenario.SharedPanelSettings =
+                AssetDatabase.LoadAssetAtPath<PanelSettings>(PanelSettingsPath);
+
+            Debug.Log($"[ScenarioBrowser] Created PanelSettings at {PanelSettingsPath}" +
+                      (defaultTheme != null ? $" with theme: {AssetDatabase.GetAssetPath(defaultTheme)}" : " (no theme found — using fallback font)"));
+        }
+
+        private static ThemeStyleSheet FindDefaultRuntimeTheme()
+        {
+            // Search for Unity's built-in runtime ThemeStyleSheet assets
+            var guids = AssetDatabase.FindAssets("t:ThemeStyleSheet");
+            ThemeStyleSheet fallback = null;
+
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+
+                // Skip our own previously created empty theme
+                if (path.Contains("ScenarioTheme")) continue;
+
+                // Prefer Unity's default runtime theme
+                if (path.Contains("UnityDefaultRuntimeTheme") ||
+                    path.Contains("DefaultRuntimeTheme"))
+                {
+                    var theme = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(path);
+                    if (theme != null)
+                    {
+                        Debug.Log($"[ScenarioBrowser] Found Unity runtime theme at: {path}");
+                        return theme;
+                    }
+                }
+
+                // Keep track of any theme as fallback
+                if (fallback == null)
+                    fallback = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(path);
+            }
+
+            if (fallback != null)
+                Debug.Log($"[ScenarioBrowser] Using fallback theme: {AssetDatabase.GetAssetPath(fallback)}");
+            else
+                Debug.LogWarning("[ScenarioBrowser] No ThemeStyleSheet found — text will use fallback font from DataDrivenScenario");
+
+            return fallback;
+        }
+
+        private static void EnsureStyleSheets()
+        {
+            if (DataDrivenScenario.SharedStyleSheets != null)
+                return;
+
+            var themeSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
+                "Packages/com.unidad.core/Runtime/UI/DesignSystem/UnidadTheme.uss");
+            var componentSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
+                "Packages/com.unidad.core/Runtime/UI/DesignSystem/UnidadComponents.uss");
+
+            DataDrivenScenario.SharedStyleSheets = new[] { themeSheet, componentSheet };
         }
 
         private class ScenarioGroup
