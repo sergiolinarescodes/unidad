@@ -71,6 +71,11 @@ namespace Unidad.Core.UI.TextAnimation
 
         public void Dispose()
         {
+            foreach (var settings in _presets.Values)
+            {
+                if (settings != null)
+                    UnityEngine.Object.Destroy(settings);
+            }
             _presets.Clear();
         }
     }

@@ -50,50 +50,39 @@ namespace Unidad.Core.UI.TextAnimation.ElementAnimation
             {
                 case ElementAnimationType.SlideIn:
                     SetSlideOffset(target, config.Direction, true);
-                    target.style.transitionProperty = new List<StylePropertyName> { new("translate") };
-                    target.style.transitionDuration = new List<TimeValue> { new(durationMs, TimeUnit.Millisecond) };
-                    target.style.transitionTimingFunction = new List<EasingFunction> { easing };
+                    SetTransition(target, "translate", durationMs, easing);
                     break;
-
                 case ElementAnimationType.SlideOut:
                     target.style.translate = new Translate(0, 0);
-                    target.style.transitionProperty = new List<StylePropertyName> { new("translate") };
-                    target.style.transitionDuration = new List<TimeValue> { new(durationMs, TimeUnit.Millisecond) };
-                    target.style.transitionTimingFunction = new List<EasingFunction> { easing };
+                    SetTransition(target, "translate", durationMs, easing);
                     break;
-
                 case ElementAnimationType.FadeIn:
                     target.style.opacity = 0;
-                    target.style.transitionProperty = new List<StylePropertyName> { new("opacity") };
-                    target.style.transitionDuration = new List<TimeValue> { new(durationMs, TimeUnit.Millisecond) };
-                    target.style.transitionTimingFunction = new List<EasingFunction> { easing };
+                    SetTransition(target, "opacity", durationMs, easing);
                     break;
-
                 case ElementAnimationType.FadeOut:
                     target.style.opacity = 1;
-                    target.style.transitionProperty = new List<StylePropertyName> { new("opacity") };
-                    target.style.transitionDuration = new List<TimeValue> { new(durationMs, TimeUnit.Millisecond) };
-                    target.style.transitionTimingFunction = new List<EasingFunction> { easing };
+                    SetTransition(target, "opacity", durationMs, easing);
                     break;
-
                 case ElementAnimationType.ScaleIn:
                     target.style.scale = new Scale(new Vector2(0, 0));
-                    target.style.transitionProperty = new List<StylePropertyName> { new("scale") };
-                    target.style.transitionDuration = new List<TimeValue> { new(durationMs, TimeUnit.Millisecond) };
-                    target.style.transitionTimingFunction = new List<EasingFunction> { easing };
+                    SetTransition(target, "scale", durationMs, easing);
                     break;
-
                 case ElementAnimationType.ScaleOut:
                     target.style.scale = new Scale(new Vector2(1, 1));
-                    target.style.transitionProperty = new List<StylePropertyName> { new("scale") };
-                    target.style.transitionDuration = new List<TimeValue> { new(durationMs, TimeUnit.Millisecond) };
-                    target.style.transitionTimingFunction = new List<EasingFunction> { easing };
+                    SetTransition(target, "scale", durationMs, easing);
                     break;
-
                 case ElementAnimationType.Shake:
                     target.style.translate = new Translate(0, 0);
                     break;
             }
+        }
+
+        private static void SetTransition(VisualElement target, string property, int durationMs, EasingFunction easing)
+        {
+            target.style.transitionProperty = new List<StylePropertyName> { new(property) };
+            target.style.transitionDuration = new List<TimeValue> { new(durationMs, TimeUnit.Millisecond) };
+            target.style.transitionTimingFunction = new List<EasingFunction> { easing };
         }
 
         private static void ApplyFinalState(VisualElement target, ElementAnimationConfig config)

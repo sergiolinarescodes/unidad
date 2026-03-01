@@ -30,6 +30,8 @@ namespace Unidad.Core.Testing
         /// </summary>
         public static StyleSheet[] SharedStyleSheets { get; set; }
 
+        private static Font _cachedFallbackFont;
+
         protected DataDrivenScenario(TestScenarioDefinition definition)
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));
@@ -89,11 +91,14 @@ namespace Unidad.Core.Testing
                         // Runtime panels without a ThemeStyleSheet have no default font,
                         // which makes ALL text invisible. Set a fallback font on the root
                         // so every child element can inherit it and render text.
-                        var builtinFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                        if (builtinFont == null)
-                            builtinFont = Font.CreateDynamicFontFromOSFont("Arial", 16);
-                        if (builtinFont != null)
-                            root.style.unityFontDefinition = FontDefinition.FromFont(builtinFont);
+                        if (_cachedFallbackFont == null)
+                        {
+                            _cachedFallbackFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                            if (_cachedFallbackFont == null)
+                                _cachedFallbackFont = Font.CreateDynamicFontFromOSFont("Arial", 16);
+                        }
+                        if (_cachedFallbackFont != null)
+                            root.style.unityFontDefinition = FontDefinition.FromFont(_cachedFallbackFont);
                     }
                 }
                 return _document;
