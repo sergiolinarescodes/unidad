@@ -139,10 +139,12 @@ namespace Unidad.Core.UI.Dialog
             void OnTypewriterFinished(TextAppearanceFinishedEvent _)
             {
                 bodyLabel.textAppearanceFinished -= OnTypewriterFinished;
+                pending.OnTypewriterFinished = null;
                 _elementAnimator.Animate(buttonsContainer, new ElementAnimationConfig(ElementAnimationType.FadeIn, 0.2f));
             }
 
             bodyLabel.textAppearanceFinished += OnTypewriterFinished;
+            pending.OnTypewriterFinished = OnTypewriterFinished;
 
             // If text appearance is disabled, show buttons immediately
             var settings = _textAnimationService.GetPreset(definition.AnimationPreset);
@@ -169,6 +171,10 @@ namespace Unidad.Core.UI.Dialog
             var pending = _current;
             _current = null;
 
+            // Unsubscribe typewriter callback if dialog dismissed before typewriter finished
+            if (pending.OnTypewriterFinished != null && pending.BodyLabel != null)
+                pending.BodyLabel.textAppearanceFinished -= pending.OnTypewriterFinished;
+
             pending.Root?.RemoveFromHierarchy();
             pending.OnResult?.Invoke(result);
 
@@ -191,6 +197,7 @@ namespace Unidad.Core.UI.Dialog
             public Action<DialogResult> OnResult { get; }
             public VisualElement Root { get; set; }
             public AnimatedLabel BodyLabel { get; set; }
+            public Action<TextAppearanceFinishedEvent> OnTypewriterFinished { get; set; }
 
             public PendingDialog(DialogDefinition definition, Action<DialogResult> onResult)
             {

@@ -69,15 +69,19 @@ namespace Unidad.Core.UI.Components
             handle.Root.Add(label);
 
             var formattedText = style.FormatText(text);
+            var cleaned = false;
 
-            // Auto-recycle on vanish finished
-            void OnVanishFinished(TextVanishingFinishedEvent _)
+            void Cleanup()
             {
+                if (cleaned) return;
+                cleaned = true;
                 label.textVanishingFinished -= OnVanishFinished;
                 _worldUIService.Detach(handle);
-                if (autoDestroyAnchor && anchor != null)
+                if (autoDestroyAnchor && anchor != null && anchor.gameObject != null)
                     Object.Destroy(anchor.gameObject);
             }
+
+            void OnVanishFinished(TextVanishingFinishedEvent _) => Cleanup();
 
             label.textVanishingFinished += OnVanishFinished;
 
@@ -85,13 +89,8 @@ namespace Unidad.Core.UI.Components
             if (handle.GameObject != null)
             {
                 var duration = style.Duration;
-                handle.Root.schedule.Execute(() =>
-                {
-                    label.textVanishingFinished -= OnVanishFinished;
-                    _worldUIService.Detach(handle);
-                    if (autoDestroyAnchor && anchor != null && anchor.gameObject != null)
-                        Object.Destroy(anchor.gameObject);
-                }).StartingIn((long)(duration * 1000) + 500);
+                handle.Root.schedule.Execute(() => Cleanup())
+                    .StartingIn((long)(duration * 1000) + 500);
             }
 
             _textAnimationService.PlayTypewriter(label, formattedText);

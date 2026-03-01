@@ -403,15 +403,12 @@ namespace Unidad.Core.Editor.Editor.ScenarioBrowser
 
         private static ThemeStyleSheet FindDefaultRuntimeTheme()
         {
-            // Search for Unity's built-in runtime ThemeStyleSheet assets
             var guids = AssetDatabase.FindAssets("t:ThemeStyleSheet");
-            ThemeStyleSheet fallback = null;
+            string fallbackGuid = null;
 
             foreach (var guid in guids)
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
-
-                // Skip our own previously created empty theme
                 if (path.Contains("ScenarioTheme")) continue;
 
                 // Prefer Unity's default runtime theme
@@ -419,24 +416,21 @@ namespace Unidad.Core.Editor.Editor.ScenarioBrowser
                     path.Contains("DefaultRuntimeTheme"))
                 {
                     var theme = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(path);
-                    if (theme != null)
-                    {
-                        Debug.Log($"[ScenarioBrowser] Found Unity runtime theme at: {path}");
-                        return theme;
-                    }
+                    if (theme != null) return theme;
                 }
 
-                // Keep track of any theme as fallback
-                if (fallback == null)
-                    fallback = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(path);
+                // Store first valid guid as fallback — only load if no preferred theme found
+                fallbackGuid ??= guid;
             }
 
-            if (fallback != null)
-                Debug.Log($"[ScenarioBrowser] Using fallback theme: {AssetDatabase.GetAssetPath(fallback)}");
-            else
-                Debug.LogWarning("[ScenarioBrowser] No ThemeStyleSheet found — text will use fallback font from DataDrivenScenario");
+            if (fallbackGuid != null)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(fallbackGuid);
+                return AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(path);
+            }
 
-            return fallback;
+            Debug.LogWarning("[ScenarioBrowser] No ThemeStyleSheet found — text will use fallback font from DataDrivenScenario");
+            return null;
         }
 
         private static void EnsureStyleSheets()
