@@ -51,11 +51,11 @@ namespace Unidad.Core.Bootstrap
                 _container = gameObject.scene.GetSceneContainer();
                 SpawnTickRunner(_container);
                 OnContainerReady(_container);
-                UnityEngine.Debug.Log($"[UnidadBootstrap] Initialization complete. {_installers.Count} systems installed.");
+                Debug.Log($"[UnidadBootstrap] Initialization complete. {_installers.Count} systems installed.");
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogError($"[UnidadBootstrap] Initialization failed: {ex.Message}\n{ex.StackTrace}");
+                Debug.LogError($"[UnidadBootstrap] Initialization failed: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
