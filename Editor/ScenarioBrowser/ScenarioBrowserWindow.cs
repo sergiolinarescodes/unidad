@@ -385,7 +385,7 @@ namespace Unidad.Core.Editor.Editor.ScenarioBrowser
             if (!AssetDatabase.IsValidFolder(UIToolkitFolder))
                 AssetDatabase.CreateFolder("Assets", "UI Toolkit");
 
-            var panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
+            var panelSettings = CreateInstance<PanelSettings>();
             panelSettings.themeStyleSheet = defaultTheme;
             panelSettings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
             panelSettings.referenceResolution = new Vector2Int(1920, 1080);
