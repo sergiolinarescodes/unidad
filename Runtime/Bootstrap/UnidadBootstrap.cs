@@ -118,19 +118,20 @@ namespace Unidad.Core.Bootstrap
         }
 
         /// <summary>
-        /// Spawns the TickRunner MonoBehaviour and wires it to all registered ITickable services.
+        /// Spawns the TickRunner MonoBehaviour and wires it to all registered ITickable and IFixedTickable services.
         /// </summary>
         private void SpawnTickRunner(Container container)
         {
             var timeProvider = container.Resolve<ITimeProvider>();
             var tickables = ResolveTickables(container);
+            var fixedTickables = ResolveFixedTickables(container);
 
-            if (tickables.Count == 0) return;
+            if (tickables.Count == 0 && fixedTickables.Count == 0) return;
 
             var tickRunnerObj = new GameObject("[TickRunner]");
             tickRunnerObj.transform.SetParent(transform);
             var tickRunner = tickRunnerObj.AddComponent<TickRunner>();
-            tickRunner.Initialize(timeProvider, tickables);
+            tickRunner.Initialize(timeProvider, tickables, fixedTickables);
         }
 
         /// <summary>
@@ -140,6 +141,15 @@ namespace Unidad.Core.Bootstrap
         protected virtual List<ITickable> ResolveTickables(Container container)
         {
             return new List<ITickable>();
+        }
+
+        /// <summary>
+        /// Resolves all IFixedTickable services from the container.
+        /// Override to customize which fixed tickables are registered.
+        /// </summary>
+        protected virtual List<IFixedTickable> ResolveFixedTickables(Container container)
+        {
+            return new List<IFixedTickable>();
         }
 
         /// <summary>
