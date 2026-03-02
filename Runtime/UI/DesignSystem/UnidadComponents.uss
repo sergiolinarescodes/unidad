@@ -183,6 +183,57 @@
     color: #FFD700;
 }
 
+/* ===== Tag ===== */
+.unidad-tag {
+    font-size: var(--font-size-xs);
+    background-color: var(--color-bg-surface);
+    padding: var(--spacing-xs) 6px;
+    border-radius: var(--radius-sm);
+    margin-right: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
+    transition: scale 150ms ease-out-cubic, opacity 150ms ease-out-cubic;
+    scale: 1 1;
+}
+
+.unidad-tag:hover {
+    scale: 1.08 1.08;
+    opacity: 0.85;
+}
+
+.unidad-tag--pressed {
+    scale: 0.90 0.90;
+}
+
+/* ===== Console ===== */
+.unidad-console {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 40%;
+    background-color: rgba(8, 8, 18, 0.95);
+    border-top-left-radius: var(--radius-sm);
+    border-top-right-radius: var(--radius-sm);
+    border-top-width: var(--border-width);
+    border-top-color: rgba(255, 255, 255, 0.1);
+    padding: var(--spacing-sm);
+    transition: translate 300ms ease-out-cubic, opacity 300ms ease-out-cubic;
+    translate: 0 0;
+    opacity: 1;
+}
+
+.unidad-console--hidden {
+    translate: 0 100%;
+    opacity: 0;
+}
+
+.unidad-console__header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
 /* ===== Code Editor ===== */
 #script-editor__text-field {
     --unity-cursor-color: #FFFFFF;
