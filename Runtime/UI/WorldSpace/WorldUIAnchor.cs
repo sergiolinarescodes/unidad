@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Unidad.Core.UI.WorldSpace
 {
-    public sealed class WorldUIAnchor : MonoBehaviour
+    internal sealed class WorldUIAnchor : MonoBehaviour
     {
         private Transform _target;
         private Vector3 _offset;

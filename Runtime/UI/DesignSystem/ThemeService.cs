@@ -22,11 +22,6 @@ namespace Unidad.Core.UI.DesignSystem
 
         public void SetTheme(string themeName, StyleSheet themeSheet)
         {
-            if (ThemeStyleSheet != null && ThemeStyleSheet != themeSheet)
-            {
-                // Existing theme will be swapped by consumers via ThemeChangedEvent
-            }
-
             CurrentTheme = themeName;
             ThemeStyleSheet = themeSheet;
             Publish(new ThemeChangedEvent(themeName));

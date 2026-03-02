@@ -51,11 +51,11 @@ namespace Unidad.Core.Bootstrap
                 _container = gameObject.scene.GetSceneContainer();
                 SpawnTickRunner(_container);
                 OnContainerReady(_container);
-                UnityEngine.Debug.Log($"[UnidadBootstrap] Initialization complete. {_installers.Count} systems installed.");
+                Debug.Log($"[UnidadBootstrap] Initialization complete. {_installers.Count} systems installed.");
             }
             catch (Exception ex)
             {
-                UnityEngine.Debug.LogError($"[UnidadBootstrap] Initialization failed: {ex.Message}\n{ex.StackTrace}");
+                Debug.LogError($"[UnidadBootstrap] Initialization failed: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -118,19 +118,20 @@ namespace Unidad.Core.Bootstrap
         }
 
         /// <summary>
-        /// Spawns the TickRunner MonoBehaviour and wires it to all registered ITickable services.
+        /// Spawns the TickRunner MonoBehaviour and wires it to all registered ITickable and IFixedTickable services.
         /// </summary>
         private void SpawnTickRunner(Container container)
         {
             var timeProvider = container.Resolve<ITimeProvider>();
             var tickables = ResolveTickables(container);
+            var fixedTickables = ResolveFixedTickables(container);
 
-            if (tickables.Count == 0) return;
+            if (tickables.Count == 0 && fixedTickables.Count == 0) return;
 
             var tickRunnerObj = new GameObject("[TickRunner]");
             tickRunnerObj.transform.SetParent(transform);
             var tickRunner = tickRunnerObj.AddComponent<TickRunner>();
-            tickRunner.Initialize(timeProvider, tickables);
+            tickRunner.Initialize(timeProvider, tickables, fixedTickables);
         }
 
         /// <summary>
@@ -140,6 +141,15 @@ namespace Unidad.Core.Bootstrap
         protected virtual List<ITickable> ResolveTickables(Container container)
         {
             return new List<ITickable>();
+        }
+
+        /// <summary>
+        /// Resolves all IFixedTickable services from the container.
+        /// Override to customize which fixed tickables are registered.
+        /// </summary>
+        protected virtual List<IFixedTickable> ResolveFixedTickables(Container container)
+        {
+            return new List<IFixedTickable>();
         }
 
         /// <summary>

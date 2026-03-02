@@ -9,6 +9,6 @@ namespace Unidad.Core.UI.WorldSpace
         public float Scale { get; set; } = 0.01f;
         public int SortOrder { get; set; }
 
-        public static WorldUISettings Default => new();
+        public static readonly WorldUISettings Default = new();
     }
 }
