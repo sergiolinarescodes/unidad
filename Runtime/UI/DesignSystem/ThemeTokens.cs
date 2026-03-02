@@ -21,13 +21,13 @@ namespace Unidad.Core.UI.DesignSystem
         public static readonly Color TextSecondary = new(0.69f, 0.69f, 0.69f); // #B0B0B0
         public static readonly Color TextMuted = new(0.40f, 0.40f, 0.40f);     // #666666
 
-        // Typography
-        public const int FontSizeXs = 10;
-        public const int FontSizeSm = 12;
-        public const int FontSizeMd = 16;
-        public const int FontSizeLg = 20;
-        public const int FontSizeXl = 28;
-        public const int FontSizeXxl = 36;
+        // Typography (2x scale)
+        public const int FontSizeXs = 20;
+        public const int FontSizeSm = 24;
+        public const int FontSizeMd = 32;
+        public const int FontSizeLg = 40;
+        public const int FontSizeXl = 56;
+        public const int FontSizeXxl = 72;
 
         // Spacing
         public const int SpacingXs = 4;

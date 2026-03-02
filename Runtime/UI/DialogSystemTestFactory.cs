@@ -2,12 +2,10 @@ using System;
 using System.Collections.Generic;
 using Unidad.Core.Testing;
 using Unidad.Core.UI.Components;
-using Unidad.Core.UI.DesignSystem;
 using Unidad.Core.UI.Dialog;
 using Unidad.Core.UI.Events;
 using Unidad.Core.UI.TextAnimation;
 using Unidad.Core.UI.TextAnimation.ElementAnimation;
-using UnityEngine;
 using UnityEngine.UIElements;
 using IEventBus = Unidad.Core.EventBus.IEventBus;
 

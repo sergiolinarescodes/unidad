@@ -2,7 +2,6 @@ using Reflex.Core;
 using Unidad.Core.Bootstrap;
 using Unidad.Core.EventBus;
 using Unidad.Core.Testing;
-using Unidad.Core.UI.Core;
 using Unidad.Core.UI.DesignSystem;
 using Unidad.Core.UI.TextAnimation;
 using Unidad.Core.UI.TextAnimation.ElementAnimation;

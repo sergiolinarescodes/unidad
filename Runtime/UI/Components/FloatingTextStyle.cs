@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Unidad.Core.UI.Components
 {
     public enum FloatingTextType

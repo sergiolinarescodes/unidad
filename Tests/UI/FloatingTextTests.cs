@@ -1,7 +1,5 @@
 using NUnit.Framework;
-using Unidad.Core.Tests.Tests.TestUtilities;
 using Unidad.Core.UI.Components;
-using Unidad.Core.UI.Events;
 
 namespace Unidad.Core.Tests.Tests.UI
 {

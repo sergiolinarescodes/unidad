@@ -1,7 +1,6 @@
 using NUnit.Framework;
 using Unidad.Core.Tests.Tests.TestUtilities;
 using Unidad.Core.UI;
-using Unidad.Core.UI.Core;
 using Unidad.Core.UI.DesignSystem;
 using Unidad.Core.UI.Events;
 using Unidad.Core.UI.TextAnimation;

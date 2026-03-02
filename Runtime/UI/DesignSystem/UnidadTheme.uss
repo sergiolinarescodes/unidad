@@ -17,12 +17,12 @@
     --color-text-muted: #666666;
 
     /* Typography */
-    --font-size-xs: 10px;
-    --font-size-sm: 12px;
-    --font-size-md: 16px;
-    --font-size-lg: 20px;
-    --font-size-xl: 28px;
-    --font-size-xxl: 36px;
+    --font-size-xs: 20px;
+    --font-size-sm: 24px;
+    --font-size-md: 32px;
+    --font-size-lg: 40px;
+    --font-size-xl: 56px;
+    --font-size-xxl: 72px;
 
     /* Spacing */
     --spacing-xs: 4px;

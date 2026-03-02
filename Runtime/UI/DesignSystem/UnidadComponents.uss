@@ -182,3 +182,9 @@
     font-size: var(--font-size-xl);
     color: #FFD700;
 }
+
+/* ===== Code Editor ===== */
+#script-editor__text-field {
+    --unity-cursor-color: #FFFFFF;
+    --unity-selection-color: #4C80CC66;
+}
