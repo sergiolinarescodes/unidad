@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Unidad.Core.Editor.Editor.ScenarioBrowser
+namespace Unidad.Core.Editor.ScenarioBrowser
 {
     /// <summary>
     /// Standalone runner window for executing scenarios and viewing results.

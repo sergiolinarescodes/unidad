@@ -7,7 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Unidad.Core.Editor.Editor.ScenarioBrowser
+namespace Unidad.Core.Editor.ScenarioBrowser
 {
     /// <summary>
     /// Main Editor Window: lists all discovered scenarios grouped by system.

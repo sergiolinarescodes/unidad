@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Unidad.Core.Editor.Editor.ScenarioBrowser
+namespace Unidad.Core.Editor.ScenarioBrowser
 {
     /// <summary>
     /// Standalone inspector window for a selected scenario's parameters.

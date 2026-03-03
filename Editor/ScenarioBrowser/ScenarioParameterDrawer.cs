@@ -3,7 +3,7 @@ using Unidad.Core.Testing;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Unidad.Core.Editor.Editor.ScenarioBrowser
+namespace Unidad.Core.Editor.ScenarioBrowser
 {
     /// <summary>
     /// Creates editable UI fields for ScenarioParameter based on value type.
