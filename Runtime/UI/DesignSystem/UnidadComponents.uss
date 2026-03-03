@@ -234,6 +234,18 @@
     margin-bottom: var(--spacing-xs);
 }
 
+/* ===== Module Panel ===== */
+.module-panel {
+    transition: translate 300ms ease-out-cubic, opacity 300ms ease-out-cubic;
+    translate: 0 0;
+    opacity: 1;
+}
+
+.module-panel--hidden {
+    translate: 100% 0;
+    opacity: 0;
+}
+
 /* ===== Code Editor ===== */
 #script-editor__text-field {
     --unity-cursor-color: #FFFFFF;
