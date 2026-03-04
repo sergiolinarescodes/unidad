@@ -3,7 +3,8 @@
   "rootNamespace": "Unidad.Core",
   "references": [
     "Reflex",
-    "TextAnimationsForUIToolkit"
+    "TextAnimationsForUIToolkit",
+    "PrimeTween.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
