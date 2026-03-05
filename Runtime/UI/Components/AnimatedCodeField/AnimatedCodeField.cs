@@ -348,7 +348,9 @@ namespace Unidad.Core.UI.Components
 
         private (float x, float y, float height) GetCaretPosition(int lineIdx, int col)
         {
-            return (col * _charWidth, lineIdx * _lineHeight, _lineHeight);
+            var padLeft = _linesContainer.resolvedStyle.paddingLeft;
+            var padTop = _linesContainer.resolvedStyle.paddingTop;
+            return (col * _charWidth + padLeft, lineIdx * _lineHeight + padTop, _lineHeight);
         }
 
         // --- Private: Caret ---
@@ -499,8 +501,10 @@ namespace Unidad.Core.UI.Components
         {
             var text = _hiddenInput.value ?? "";
             var lines = text.Split('\n');
-            int lineIdx = Mathf.Clamp(Mathf.FloorToInt(localPos.y / _lineHeight), 0, lines.Length - 1);
-            int col = Mathf.Clamp(Mathf.RoundToInt(localPos.x / _charWidth), 0, lines[lineIdx].Length);
+            var adjustedX = localPos.x - _linesContainer.resolvedStyle.paddingLeft;
+            var adjustedY = localPos.y - _linesContainer.resolvedStyle.paddingTop;
+            int lineIdx = Mathf.Clamp(Mathf.FloorToInt(adjustedY / _lineHeight), 0, lines.Length - 1);
+            int col = Mathf.Clamp(Mathf.RoundToInt(adjustedX / _charWidth), 0, lines[lineIdx].Length);
             int idx = LineColToIndex(lineIdx, col);
             Debug.Log($"[ACF] LocalPosToIndex: localPos={localPos}, lineHeight={_lineHeight}, charWidth={_charWidth}, lineIdx={lineIdx}, col={col}, idx={idx}, totalLines={lines.Length}");
             return idx;
@@ -558,14 +562,83 @@ namespace Unidad.Core.UI.Components
 
         private void OnKeyDown(KeyDownEvent evt)
         {
-            // Arrow keys, home/end don't change text but move the caret
+            if (TryHandleNavigationKey(evt))
+                return;
+
+            // Non-navigation keys: sync caret from hidden input after it processes
             UpdateCaretPosition();
-            // Belt-and-suspenders: cursorIndex may update after this callback returns
             schedule.Execute(() =>
             {
                 UpdateCaretPosition();
                 UpdateSelection();
             });
+        }
+
+        private bool TryHandleNavigationKey(KeyDownEvent evt)
+        {
+            var key = evt.keyCode;
+            if (key != KeyCode.LeftArrow && key != KeyCode.RightArrow &&
+                key != KeyCode.UpArrow && key != KeyCode.DownArrow &&
+                key != KeyCode.Home && key != KeyCode.End)
+                return false;
+
+            var text = _hiddenInput.value ?? "";
+            var cursor = _hiddenInput.cursorIndex;
+            var (line, col) = IndexToLineCol(cursor);
+            var lines = text.Split('\n');
+            bool shift = evt.shiftKey;
+            int anchor = shift ? _hiddenInput.selectIndex : -1;
+
+            int newIndex = cursor;
+
+            switch (key)
+            {
+                case KeyCode.LeftArrow:
+                    newIndex = Mathf.Max(0, cursor - 1);
+                    break;
+
+                case KeyCode.RightArrow:
+                    newIndex = Mathf.Min(text.Length, cursor + 1);
+                    break;
+
+                case KeyCode.UpArrow:
+                    if (line > 0)
+                    {
+                        int targetCol = Mathf.Min(col, lines[line - 1].Length);
+                        newIndex = LineColToIndex(line - 1, targetCol);
+                    }
+                    else
+                    {
+                        newIndex = 0;
+                    }
+                    break;
+
+                case KeyCode.DownArrow:
+                    if (line < lines.Length - 1)
+                    {
+                        int targetCol = Mathf.Min(col, lines[line + 1].Length);
+                        newIndex = LineColToIndex(line + 1, targetCol);
+                    }
+                    else
+                    {
+                        newIndex = text.Length;
+                    }
+                    break;
+
+                case KeyCode.Home:
+                    newIndex = LineColToIndex(line, 0);
+                    break;
+
+                case KeyCode.End:
+                    newIndex = LineColToIndex(line, lines[line].Length);
+                    break;
+            }
+
+            int selectPos = shift ? anchor : newIndex;
+            _hiddenInput.SelectRange(newIndex, selectPos);
+            UpdateCaretPosition();
+            evt.StopPropagation();
+            return true;
         }
 
         private void OnInputFocusIn(FocusInEvent evt)

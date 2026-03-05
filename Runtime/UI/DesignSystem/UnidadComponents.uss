@@ -277,6 +277,8 @@
     right: 0;
     bottom: 0;
     overflow: hidden;
+    padding-left: 8px;
+    padding-top: 4px;
 }
 
 .animated-code-field__line {
