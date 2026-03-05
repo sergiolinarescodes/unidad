@@ -264,7 +264,7 @@ namespace Unidad.Core.UI
             if (showFloating)
             {
                 AddPresetDemo(container, "floating", "Floating (auto-vanish)",
-                    FloatingTextStyle.Damage.FormatText(floatingText));
+                    _service.ApplyRecipe(FloatingTextStyle.Damage.RecipeName, floatingText));
             }
         }
 

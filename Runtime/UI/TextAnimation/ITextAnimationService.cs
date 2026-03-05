@@ -14,5 +14,9 @@ namespace Unidad.Core.UI.TextAnimation
 
         void PlayTypewriter(AnimatedLabel label, string text, Action onComplete = null);
         void Skip(AnimatedLabel label);
+
+        void RegisterRecipe(string name, TextAnimationRecipe recipe);
+        TextAnimationRecipe GetRecipe(string name);
+        string ApplyRecipe(string recipeName, string text);
     }
 }

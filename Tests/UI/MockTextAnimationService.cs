@@ -9,6 +9,7 @@ namespace Unidad.Core.Tests.Tests.UI
     public sealed class MockTextAnimationService : ITextAnimationService
     {
         private readonly Dictionary<string, TextAnimationSettings> _presets = new();
+        private readonly Dictionary<string, TextAnimationRecipe> _recipes = new();
         private readonly List<string> _playedTexts = new();
 
         public TextAnimationSettings DefaultSettings { get; }
@@ -62,5 +63,13 @@ namespace Unidad.Core.Tests.Tests.UI
             SkipCount++;
             label.Skip();
         }
+
+        public void RegisterRecipe(string name, TextAnimationRecipe recipe) => _recipes[name] = recipe;
+
+        public TextAnimationRecipe GetRecipe(string name) =>
+            _recipes.TryGetValue(name, out var r) ? r : null;
+
+        public string ApplyRecipe(string recipeName, string text) =>
+            !string.IsNullOrEmpty(recipeName) && GetRecipe(recipeName) is { } r ? r.Apply(text) : text;
     }
 }

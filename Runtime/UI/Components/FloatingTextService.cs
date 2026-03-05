@@ -68,7 +68,7 @@ namespace Unidad.Core.UI.Components
 
             handle.Root.Add(label);
 
-            var formattedText = style.FormatText(text);
+            var formattedText = _textAnimationService.ApplyRecipe(style.RecipeName, text);
             var cleaned = false;
 
             void Cleanup()

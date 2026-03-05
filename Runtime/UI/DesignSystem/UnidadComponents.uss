@@ -246,8 +246,55 @@
     opacity: 0;
 }
 
-/* ===== Code Editor ===== */
-#script-editor__text-field {
+/* ===== Tooltip ===== */
+.unidad-tooltip {
+    position: absolute;
+    transition: opacity 150ms ease-out-cubic;
+}
+
+.unidad-tooltip__text {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    white-space: normal;
+}
+
+.unidad-tooltip__arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
+/* ===== AnimatedScriptField ===== */
+.animated-script-field {
+    position: relative;
+    flex-grow: 1;
+}
+
+.animated-script-field__input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.animated-script-field__input > #unity-text-input {
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    color: white;
     --unity-cursor-color: #FFFFFF;
     --unity-selection-color: #4C80CC66;
+}
+
+.animated-script-field--animating .animated-script-field__input {
+    color: rgba(0, 0, 0, 0);
+}
+
+.animated-script-field--animating .animated-script-field__input > #unity-text-input {
+    color: rgba(0, 0, 0, 0);
+}
+
+.animated-script-field--animating .animated-script-field__input > #unity-text-input > TextElement {
+    color: rgba(0, 0, 0, 0);
 }

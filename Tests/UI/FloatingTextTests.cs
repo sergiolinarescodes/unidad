@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Unidad.Core.UI.Components;
+using Unidad.Core.UI.TextAnimation;
 
 namespace Unidad.Core.Tests.Tests.UI
 {
@@ -7,38 +8,48 @@ namespace Unidad.Core.Tests.Tests.UI
     public class FloatingTextTests
     {
         [Test]
-        public void FloatingTextStyle_Info_HasNoAnimationTag()
+        public void FloatingTextStyle_Info_HasNoRecipeName()
         {
             var style = FloatingTextStyle.Info;
-            Assert.That(style.FormatText("Hello"), Is.EqualTo("Hello"));
+            Assert.That(style.RecipeName, Is.EqualTo(""));
         }
 
         [Test]
-        public void FloatingTextStyle_Damage_WrapsWithShakeTag()
+        public void FloatingTextStyle_Damage_HasDamageRecipe()
         {
             var style = FloatingTextStyle.Damage;
-            var formatted = style.FormatText("-42");
-            Assert.That(formatted, Does.Contain("<shake"));
-            Assert.That(formatted, Does.Contain("-42"));
-            Assert.That(formatted, Does.Contain("</shake>"));
+            Assert.That(style.RecipeName, Is.EqualTo("damage"));
         }
 
         [Test]
-        public void FloatingTextStyle_Heal_WrapsWithWaveTag()
+        public void FloatingTextStyle_Heal_HasHealRecipe()
         {
             var style = FloatingTextStyle.Heal;
-            var formatted = style.FormatText("+15");
-            Assert.That(formatted, Does.Contain("<wave"));
-            Assert.That(formatted, Does.Contain("+15"));
+            Assert.That(style.RecipeName, Is.EqualTo("heal"));
         }
 
         [Test]
-        public void FloatingTextStyle_Critical_WrapsWithBounceTag()
+        public void FloatingTextStyle_Critical_HasCriticalRecipe()
         {
             var style = FloatingTextStyle.Critical;
-            var formatted = style.FormatText("CRIT!");
-            Assert.That(formatted, Does.Contain("<bounce"));
-            Assert.That(formatted, Does.Contain("CRIT!"));
+            Assert.That(style.RecipeName, Is.EqualTo("critical"));
+        }
+
+        [Test]
+        public void TextAnimationRecipe_Apply_WrapsText()
+        {
+            var recipe = new TextAnimationRecipe("<shake a=0.1 f=5>{0}</shake>", 1.5f);
+            var result = recipe.Apply("-42");
+            Assert.That(result, Does.Contain("<shake"));
+            Assert.That(result, Does.Contain("-42"));
+            Assert.That(result, Does.Contain("</shake>"));
+        }
+
+        [Test]
+        public void TextAnimationRecipe_Apply_EmptyTemplate_ReturnsOriginal()
+        {
+            var recipe = new TextAnimationRecipe("", 1.0f);
+            Assert.That(recipe.Apply("hello"), Is.EqualTo("hello"));
         }
 
         [Test]

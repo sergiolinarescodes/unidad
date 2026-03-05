@@ -10,4 +10,6 @@ namespace Unidad.Core.UI.Events
     public readonly record struct DialogDismissedEvent(string DialogId, Dialog.DialogResult Result);
     public readonly record struct ThemeChangedEvent(string ThemeName);
     public readonly record struct FloatingTextSpawnedEvent(Vector3 Position, string Text);
+    public readonly record struct TooltipShownEvent(int TooltipId, bool IsWorldSpace);
+    public readonly record struct TooltipHiddenEvent(int TooltipId, bool IsWorldSpace);
 }
