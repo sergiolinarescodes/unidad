@@ -21,6 +21,9 @@ namespace Unidad.Core.UI
         {
             yield return new TooltipScreenSpaceScenario();
             yield return new TooltipWorldSpaceScenario();
+            yield return new TooltipWorldClampingScenario();
+            yield return new TooltipWorldHoverPersistScenario();
+            yield return new TooltipWorldCollisionScenario();
         }
     }
 }

@@ -1,4 +1,5 @@
 using Reflex.Core;
+using Unidad.Core.Abstractions;
 using Unidad.Core.Bootstrap;
 using Unidad.Core.EventBus;
 using Unidad.Core.Testing;
@@ -15,7 +16,8 @@ namespace Unidad.Core.UI
             {
                 var eventBus = container.Resolve<IEventBus>();
                 var elementAnimator = container.Resolve<IElementAnimator>();
-                return (ITooltipService)new TooltipService(eventBus, elementAnimator);
+                var timeProvider = container.Resolve<ITimeProvider>();
+                return (ITooltipService)new TooltipService(eventBus, elementAnimator, timeProvider);
             }, typeof(ITooltipService));
         }
 

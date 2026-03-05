@@ -264,37 +264,64 @@
     height: 0;
 }
 
-/* ===== AnimatedScriptField ===== */
-.animated-script-field {
+/* ===== AnimatedCodeField ===== */
+.animated-code-field {
     position: relative;
     flex-grow: 1;
 }
 
-.animated-script-field__input {
+.animated-code-field__lines {
     position: absolute;
     left: 0;
     top: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0);
+    overflow: hidden;
 }
 
-.animated-script-field__input > #unity-text-input {
+.animated-code-field__line {
+    flex-direction: row;
+}
+
+.animated-code-field__char {
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+}
+
+.animated-code-field__caret {
+    position: absolute;
+    width: 1px;
+    background-color: white;
+}
+
+.animated-code-field__selection {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.animated-code-field__selection-rect {
+    position: absolute;
+    background-color: rgba(76, 128, 204, 0.4);
+}
+
+/* Hide all TextField visuals completely */
+.animated-code-field__hidden-input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0;
+}
+
+.animated-code-field__hidden-input > #unity-text-input {
     background-color: rgba(0, 0, 0, 0);
     border-width: 0;
-    color: white;
-    --unity-cursor-color: #FFFFFF;
-    --unity-selection-color: #4C80CC66;
-}
-
-.animated-script-field--animating .animated-script-field__input {
     color: rgba(0, 0, 0, 0);
-}
-
-.animated-script-field--animating .animated-script-field__input > #unity-text-input {
-    color: rgba(0, 0, 0, 0);
-}
-
-.animated-script-field--animating .animated-script-field__input > #unity-text-input > TextElement {
-    color: rgba(0, 0, 0, 0);
+    --unity-cursor-color: rgba(0, 0, 0, 0);
+    --unity-selection-color: rgba(0, 0, 0, 0);
 }

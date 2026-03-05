@@ -18,7 +18,9 @@ namespace Unidad.Core.UI.Tooltip
 
         void SetTooltipLayer(VisualElement layer);
 
-        void Attach(GameObject target, string text, TooltipStyle style = null, Vector3 offset = default);
+        void Attach(GameObject target, string text, TooltipStyle style = null,
+            Vector3 offset = default, WorldTooltipCollision collision = WorldTooltipCollision.None,
+            WorldTooltipShowMode showMode = WorldTooltipShowMode.FadeIn);
         void Detach(GameObject target);
 
         void Attach(VisualElement target, string text, TooltipStyle style = null,

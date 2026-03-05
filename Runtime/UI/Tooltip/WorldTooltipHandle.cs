@@ -8,6 +8,7 @@ namespace Unidad.Core.UI.Tooltip
         internal int Id { get; }
         internal GameObject Go { get; }
         internal UIDocument Document { get; }
+        internal VisualElement CachedContainer { get; set; }
 
         internal WorldTooltipHandle(int id, GameObject go, UIDocument document)
         {

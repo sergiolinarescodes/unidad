@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unidad.Core.Abstractions;
 using Unidad.Core.EventBus;
 using Unidad.Core.Systems;
 using Unidad.Core.UI.Events;
@@ -14,6 +15,7 @@ namespace Unidad.Core.UI.Tooltip
     internal sealed class TooltipService : SystemServiceBase, ITooltipService
     {
         private readonly IElementAnimator _elementAnimator;
+        private readonly ITimeProvider _timeProvider;
         private VisualElement _tooltipLayer;
         private int _nextId;
         private readonly Dictionary<int, TooltipHandle> _activeTooltips = new();
@@ -32,9 +34,11 @@ namespace Unidad.Core.UI.Tooltip
 
         public TooltipService(
             IEventBus eventBus,
-            IElementAnimator elementAnimator) : base(eventBus)
+            IElementAnimator elementAnimator,
+            ITimeProvider timeProvider = null) : base(eventBus)
         {
             _elementAnimator = elementAnimator;
+            _timeProvider = timeProvider ?? new UnityTimeProvider();
         }
 
         public void SetTooltipLayer(VisualElement layer)
@@ -323,7 +327,9 @@ namespace Unidad.Core.UI.Tooltip
 
         // ── World-space: Attach / Detach API ──
 
-        public void Attach(GameObject target, string text, TooltipStyle style = null, Vector3 offset = default)
+        public void Attach(GameObject target, string text, TooltipStyle style = null,
+            Vector3 offset = default, WorldTooltipCollision collision = WorldTooltipCollision.None,
+            WorldTooltipShowMode showMode = WorldTooltipShowMode.FadeIn)
         {
             if (target == null) return;
 
@@ -334,11 +340,11 @@ namespace Unidad.Core.UI.Tooltip
 
             if (_worldDriver.HasEntry(target))
             {
-                _worldDriver.UpdateEntry(target, text, resolvedStyle, resolvedOffset);
+                _worldDriver.UpdateEntry(target, text, resolvedStyle, resolvedOffset, collision, showMode);
                 return;
             }
 
-            _worldDriver.Register(target, text, resolvedStyle, resolvedOffset);
+            _worldDriver.Register(target, text, resolvedStyle, resolvedOffset, collision, showMode);
         }
 
         public void Detach(GameObject target)
@@ -356,7 +362,7 @@ namespace Unidad.Core.UI.Tooltip
             if (_worldRoot != null)
                 driverGo.transform.SetParent(_worldRoot.transform);
             _worldDriver = driverGo.AddComponent<WorldTooltipDriver>();
-            _worldDriver.Initialize(this);
+            _worldDriver.Initialize(this, _timeProvider);
         }
 
         // ── World-space: Internal show/hide (called by WorldTooltipDriver) ──
@@ -412,13 +418,44 @@ namespace Unidad.Core.UI.Tooltip
                 label.style.color = style.TextColor;
             }
 
-            root.style.display = DisplayStyle.Flex;
+            // Leave hidden — WorldTooltipDriver will reveal after positioning
+            root.style.display = DisplayStyle.None;
 
-            var handle = new WorldTooltipHandle(id, poolEntry.Go, poolEntry.Document);
+            var handle = new WorldTooltipHandle(id, poolEntry.Go, poolEntry.Document)
+            {
+                CachedContainer = container
+            };
             _activeWorldTooltips[id] = handle;
 
             Publish(new TooltipShownEvent(id, true));
             return handle;
+        }
+
+        internal void RevealWorldInternal(WorldTooltipHandle handle, WorldTooltipShowMode showMode)
+        {
+            if (handle == null) return;
+
+            var root = handle.Document?.rootVisualElement;
+            if (root == null) return;
+
+            if (showMode == WorldTooltipShowMode.Instant)
+            {
+                root.style.opacity = 1f;
+                root.style.display = DisplayStyle.Flex;
+            }
+            else
+            {
+                // CSS transitions don't fire on elements going from display:none → flex
+                // in the same frame. Set opacity=0, make visible, then schedule the
+                // fade-in on the next frame so the element is in layout first.
+                root.style.opacity = 0f;
+                root.style.display = DisplayStyle.Flex;
+                root.schedule.Execute(() =>
+                {
+                    _elementAnimator.Animate(root,
+                        new ElementAnimationConfig(ElementAnimationType.FadeIn, 0.15f));
+                });
+            }
         }
 
         internal void HideWorldInternal(WorldTooltipHandle handle)
@@ -488,17 +525,19 @@ namespace Unidad.Core.UI.Tooltip
 
             var root = uiDoc.rootVisualElement;
 
-            // Ensure root and template containers fill the panel (matches floating text pattern)
+            // Root fills the panel; template children keep their own sizing
+            // (tooltip-container is position:absolute with auto-sizing to fit text)
             root.style.width = new Length(100, LengthUnit.Percent);
             root.style.height = new Length(100, LengthUnit.Percent);
-            foreach (var child in root.Children())
-            {
-                child.style.width = new Length(100, LengthUnit.Percent);
-                child.style.height = new Length(100, LengthUnit.Percent);
-            }
 
             WorldSpaceUIFactory.SetPickingModeRecursive(root, PickingMode.Ignore);
             root.style.display = DisplayStyle.None;
+
+            // Add a thin BoxCollider matching the panel size so the raycast-based
+            // hover check in WorldTooltipDriver can detect the mouse over the tooltip.
+            var box = uiDoc.gameObject.AddComponent<BoxCollider>();
+            box.size = new Vector3(5.12f, 1.28f, 0.02f);
+            box.isTrigger = true;
 
             return new WorldPoolEntry { Go = uiDoc.gameObject, Document = uiDoc };
         }
@@ -510,14 +549,14 @@ namespace Unidad.Core.UI.Tooltip
                 kvp.Value.Dispose();
             _screenAttachments.Clear();
 
-            // Destroy driver (handles its own cleanup)
+            // Hide all tooltips before destroying the driver
+            HideAll();
+
             if (_worldDriver != null)
             {
                 Object.Destroy(_worldDriver.gameObject);
                 _worldDriver = null;
             }
-
-            HideAll();
 
             while (_worldPool.Count > 0)
             {
