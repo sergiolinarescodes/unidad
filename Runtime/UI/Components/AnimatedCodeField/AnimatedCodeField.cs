@@ -48,6 +48,11 @@ namespace Unidad.Core.UI.Components
         private IVisualElementScheduledItem _typingAnimSchedule;
         private string _previousText = "";
 
+        // Highlight animation state (runs in parallel with other animations)
+        private WaveAnimation _highlightAnim;
+        private float _highlightAnimStartTime;
+        private IVisualElementScheduledItem _highlightAnimSchedule;
+
         public float TypingAnimationAmplitude { get; set; }
 
         public bool IsAnimating => _currentAnim != null;
@@ -139,7 +144,7 @@ namespace Unidad.Core.UI.Components
 
             // Wire up events
             _hiddenInput.RegisterValueChangedCallback(OnHiddenInputChanged);
-            _hiddenInput.RegisterCallback<KeyDownEvent>(OnKeyDown);
+            _hiddenInput.RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
             _hiddenInput.RegisterCallback<FocusInEvent>(OnInputFocusIn);
 
             RegisterCallback<PointerDownEvent>(OnPointerDown, TrickleDown.TrickleDown);
@@ -230,6 +235,7 @@ namespace Unidad.Core.UI.Components
         public void CancelAnimation()
         {
             CancelTypingAnimation();
+            CancelHighlightAnimation();
 
             if (_currentAnim == null) return;
 
@@ -562,83 +568,19 @@ namespace Unidad.Core.UI.Components
 
         private void OnKeyDown(KeyDownEvent evt)
         {
-            if (TryHandleNavigationKey(evt))
-                return;
+            if (_caret.style.display == DisplayStyle.None)
+                ShowCaret();
 
-            // Non-navigation keys: sync caret from hidden input after it processes
-            UpdateCaretPosition();
+            // Two-frame delay: first schedule lets TextField's default action run,
+            // second schedule reads the final cursorIndex.
             schedule.Execute(() =>
             {
-                UpdateCaretPosition();
-                UpdateSelection();
+                schedule.Execute(() =>
+                {
+                    UpdateCaretPosition();
+                    UpdateSelection();
+                });
             });
-        }
-
-        private bool TryHandleNavigationKey(KeyDownEvent evt)
-        {
-            var key = evt.keyCode;
-            if (key != KeyCode.LeftArrow && key != KeyCode.RightArrow &&
-                key != KeyCode.UpArrow && key != KeyCode.DownArrow &&
-                key != KeyCode.Home && key != KeyCode.End)
-                return false;
-
-            var text = _hiddenInput.value ?? "";
-            var cursor = _hiddenInput.cursorIndex;
-            var (line, col) = IndexToLineCol(cursor);
-            var lines = text.Split('\n');
-            bool shift = evt.shiftKey;
-            int anchor = shift ? _hiddenInput.selectIndex : -1;
-
-            int newIndex = cursor;
-
-            switch (key)
-            {
-                case KeyCode.LeftArrow:
-                    newIndex = Mathf.Max(0, cursor - 1);
-                    break;
-
-                case KeyCode.RightArrow:
-                    newIndex = Mathf.Min(text.Length, cursor + 1);
-                    break;
-
-                case KeyCode.UpArrow:
-                    if (line > 0)
-                    {
-                        int targetCol = Mathf.Min(col, lines[line - 1].Length);
-                        newIndex = LineColToIndex(line - 1, targetCol);
-                    }
-                    else
-                    {
-                        newIndex = 0;
-                    }
-                    break;
-
-                case KeyCode.DownArrow:
-                    if (line < lines.Length - 1)
-                    {
-                        int targetCol = Mathf.Min(col, lines[line + 1].Length);
-                        newIndex = LineColToIndex(line + 1, targetCol);
-                    }
-                    else
-                    {
-                        newIndex = text.Length;
-                    }
-                    break;
-
-                case KeyCode.Home:
-                    newIndex = LineColToIndex(line, 0);
-                    break;
-
-                case KeyCode.End:
-                    newIndex = LineColToIndex(line, lines[line].Length);
-                    break;
-            }
-
-            int selectPos = shift ? anchor : newIndex;
-            _hiddenInput.SelectRange(newIndex, selectPos);
-            UpdateCaretPosition();
-            evt.StopPropagation();
-            return true;
         }
 
         private void OnInputFocusIn(FocusInEvent evt)
@@ -754,6 +696,59 @@ namespace Unidad.Core.UI.Components
 
             if (!stillRunning)
                 CancelTypingAnimation();
+        }
+
+        // --- Public: Highlight Animation ---
+
+        public void PlayHighlightAnimation(List<int> charIndices)
+        {
+            CancelHighlightAnimation();
+
+            if (charIndices == null || charIndices.Count == 0 || _charLabels.Count == 0) return;
+
+            _highlightAnim = new WaveAnimation
+            {
+                Amplitude = 3f,
+                Frequency = 2f,
+                CharDelay = 0.08f,
+                Duration = 0.5f
+            };
+            _highlightAnim.SetTargetIndices(charIndices);
+            _highlightAnimStartTime = Time.realtimeSinceStartup;
+            _highlightAnim.Initialize(_charLabels.Count);
+            _highlightAnimSchedule = schedule.Execute(HighlightAnimationTick).Every(16);
+        }
+
+        private void CancelHighlightAnimation()
+        {
+            if (_highlightAnim == null) return;
+
+            for (int i = 0; i < _charLabels.Count; i++)
+                _highlightAnim.Reset(_charLabels[i]);
+
+            _highlightAnim = null;
+
+            if (_highlightAnimSchedule != null)
+            {
+                _highlightAnimSchedule.Pause();
+                _highlightAnimSchedule = null;
+            }
+        }
+
+        private void HighlightAnimationTick()
+        {
+            if (_highlightAnim == null) return;
+
+            float elapsed = Time.realtimeSinceStartup - _highlightAnimStartTime;
+            bool stillRunning = false;
+            for (int i = 0; i < _charLabels.Count; i++)
+            {
+                if (_highlightAnim.Update(elapsed, i, _charLabels.Count, _charLabels[i]))
+                    stillRunning = true;
+            }
+
+            if (!stillRunning)
+                CancelHighlightAnimation();
         }
 
         // --- Private: Index ↔ LineCol Helpers ---
