@@ -37,6 +37,7 @@ namespace Unidad.Core.UI.Components
         private IVisualElementScheduledItem _animSchedule;
         private bool _pointerDown;
         private Font _font;
+        private float _charFontSize;
 
         // Animation state
         private ICharAnimation _currentAnim;
@@ -136,11 +137,7 @@ namespace Unidad.Core.UI.Components
             _refLabel.style.visibility = Visibility.Hidden;
             Add(_refLabel);
 
-            _refLabel.RegisterCallback<GeometryChangedEvent>(e =>
-            {
-                Debug.Log($"[ACF] _refLabel GeometryChanged: oldRect={e.oldRect}, newRect={e.newRect}");
-                TryMeasureMetrics();
-            });
+            _refLabel.RegisterCallback<GeometryChangedEvent>(_ => TryMeasureMetrics());
 
             // Wire up events
             _hiddenInput.RegisterValueChangedCallback(OnHiddenInputChanged);
@@ -193,12 +190,20 @@ namespace Unidad.Core.UI.Components
             _hiddenInput.Focus();
         }
 
+        public void SetCharFontSize(float size)
+        {
+            _charFontSize = size;
+            style.fontSize = size;
+            _refLabel.style.fontSize = size;
+            foreach (var label in _charLabels)
+                label.style.fontSize = size;
+            _metricsReady = false;
+        }
+
         public void SetFont(Font font)
         {
             if (font == null) return;
             _font = font;
-            Debug.Log($"[ACF] SetFont: {font.name}");
-
             _hiddenInput.style.unityFont = font;
             _hiddenInput.style.unityFontDefinition = FontDefinition.FromFont(font);
             var inputElement = _hiddenInput.Q<VisualElement>("unity-text-input");
@@ -306,6 +311,8 @@ namespace Unidad.Core.UI.Components
                 label.style.unityFont = _font;
                 label.style.unityFontDefinition = FontDefinition.FromFont(_font);
             }
+            if (_charFontSize > 0)
+                label.style.fontSize = _charFontSize;
             // Spaces collapse to zero width in Labels — force width when metrics are known
             if (ch == " " && _metricsReady)
                 label.style.width = _charWidth;
@@ -319,18 +326,12 @@ namespace Unidad.Core.UI.Components
             var w = _refLabel.resolvedStyle.width;
             var h = _refLabel.resolvedStyle.height;
 
-            Debug.Log($"[ACF] TryMeasureMetrics: refLabel w={w}, h={h}, metricsReady={_metricsReady}, refLabel.parent={_refLabel.parent?.name ?? "null"}, refLabel.panel={(_refLabel.panel != null ? "yes" : "null")}");
-
             if (float.IsNaN(w) || w <= 0 || float.IsNaN(h) || h <= 0)
-            {
-                Debug.Log("[ACF] TryMeasureMetrics: FAILED — invalid refLabel dimensions");
                 return;
-            }
 
             _charWidth = w;
             _lineHeight = h;
             _metricsReady = true;
-            Debug.Log($"[ACF] TryMeasureMetrics: SUCCESS — charWidth={_charWidth}, lineHeight={_lineHeight}");
 
             // Force width on space labels that collapse to zero
             foreach (var label in _charLabels)
@@ -363,18 +364,12 @@ namespace Unidad.Core.UI.Components
 
         private void UpdateCaretPosition()
         {
-            if (!_metricsReady)
-            {
-                Debug.Log("[ACF] UpdateCaretPosition: SKIPPED — metrics not ready");
-                return;
-            }
+            if (!_metricsReady) return;
 
             // Caret visibility is controlled by ShowCaret/HideCaret — this method only updates position.
             var cursor = _hiddenInput.cursorIndex;
             var (line, col) = IndexToLineCol(cursor);
             var (x, y, h) = GetCaretPosition(line, col);
-
-            Debug.Log($"[ACF] UpdateCaretPosition: cursorIndex={cursor}, line={line}, col={col}, x={x}, y={y}, h={h}, caretDisplay={_caret.style.display}");
 
             _caret.style.left = x;
             _caret.style.top = y;
@@ -453,8 +448,6 @@ namespace Unidad.Core.UI.Components
 
         private void OnPointerDown(PointerDownEvent evt)
         {
-            Debug.Log($"[ACF] OnPointerDown: position={evt.position}, metricsReady={_metricsReady}, isAnimating={IsAnimating}");
-
             if (IsAnimating)
             {
                 CancelAnimation();
@@ -467,20 +460,14 @@ namespace Unidad.Core.UI.Components
             {
                 var localPos = _linesContainer.WorldToLocal(evt.position);
                 var idx = LocalPosToIndex(localPos);
-                Debug.Log($"[ACF] OnPointerDown: localPos={localPos}, idx={idx}, linesContainer.layout={_linesContainer.layout}");
                 _hiddenInput.SelectRange(idx, idx);
                 ShowCaret();
                 // Deferred: TextField resets cursor during internal focus handling
                 schedule.Execute(() =>
                 {
-                    Debug.Log($"[ACF] OnPointerDown deferred: re-applying SelectRange({idx}, {idx}), cursorIndex before={_hiddenInput.cursorIndex}");
                     _hiddenInput.SelectRange(idx, idx);
                     UpdateCaretPosition();
                 });
-            }
-            else
-            {
-                Debug.Log("[ACF] OnPointerDown: metrics NOT ready, skipping position calc");
             }
 
             evt.StopImmediatePropagation();
@@ -512,7 +499,6 @@ namespace Unidad.Core.UI.Components
             int lineIdx = Mathf.Clamp(Mathf.FloorToInt(adjustedY / _lineHeight), 0, lines.Length - 1);
             int col = Mathf.Clamp(Mathf.RoundToInt(adjustedX / _charWidth), 0, lines[lineIdx].Length);
             int idx = LineColToIndex(lineIdx, col);
-            Debug.Log($"[ACF] LocalPosToIndex: localPos={localPos}, lineHeight={_lineHeight}, charWidth={_charWidth}, lineIdx={lineIdx}, col={col}, idx={idx}, totalLines={lines.Length}");
             return idx;
         }
 
@@ -585,7 +571,6 @@ namespace Unidad.Core.UI.Components
 
         private void OnInputFocusIn(FocusInEvent evt)
         {
-            Debug.Log($"[ACF] OnInputFocusIn: isReadOnly={isReadOnly}, isAnimating={IsAnimating}");
             if (IsAnimating)
                 CancelAnimation();
 
@@ -609,14 +594,12 @@ namespace Unidad.Core.UI.Components
         {
             if (evt.target is VisualElement target && !Contains(target) && target != this)
             {
-                Debug.Log($"[ACF] OnPanelPointerDown: click outside — hiding caret. target={target.GetType().Name}");
                 HideCaret();
             }
         }
 
         private void ShowCaret()
         {
-            Debug.Log("[ACF] ShowCaret called");
             _caret.style.display = DisplayStyle.Flex;
             StartCaretBlink();
             UpdateCaretPosition();
@@ -624,7 +607,6 @@ namespace Unidad.Core.UI.Components
 
         private void HideCaret()
         {
-            Debug.Log("[ACF] HideCaret called");
             _caret.style.display = DisplayStyle.None;
             StopCaretBlink();
             _selectionLayer.Clear();
