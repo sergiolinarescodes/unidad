@@ -39,12 +39,14 @@ namespace Unidad.Core.UI.Components
             _fill.RemoveFromClassList("unidad-progress__fill--success");
             _fill.RemoveFromClassList("unidad-progress__fill--warning");
             _fill.RemoveFromClassList("unidad-progress__fill--danger");
+            _fill.RemoveFromClassList("unidad-progress__fill--info");
 
             var className = variant switch
             {
                 ProgressVariant.Success => "unidad-progress__fill--success",
                 ProgressVariant.Warning => "unidad-progress__fill--warning",
                 ProgressVariant.Danger => "unidad-progress__fill--danger",
+                ProgressVariant.Info => "unidad-progress__fill--info",
                 _ => null
             };
 
@@ -58,6 +60,7 @@ namespace Unidad.Core.UI.Components
         Default,
         Success,
         Warning,
-        Danger
+        Danger,
+        Info
     }
 }
