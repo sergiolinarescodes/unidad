@@ -21,7 +21,7 @@ namespace Unidad.Core.Editor.ScenarioBrowser
         private TextField _searchField;
         private ScrollView _scenarioList;
         private VisualElement _inspectorContainer;
-        private VisualElement _resultsContainer;
+        private ScrollView _resultsContainer;
 
         private List<ScenarioGroup> _allGroups = new();
         private ITestScenario _selectedScenario;
@@ -101,8 +101,9 @@ namespace Unidad.Core.Editor.ScenarioBrowser
             _inspectorContainer.style.borderBottomColor = new Color(0.3f, 0.3f, 0.3f);
             rightPanel.Add(_inspectorContainer);
 
-            _resultsContainer = new VisualElement();
+            _resultsContainer = new ScrollView(ScrollViewMode.Vertical);
             _resultsContainer.style.minHeight = 100;
+            _resultsContainer.style.maxHeight = 300;
             _resultsContainer.style.paddingTop = 4;
             _resultsContainer.style.paddingLeft = 4;
             rightPanel.Add(_resultsContainer);

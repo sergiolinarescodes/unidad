@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Unidad.Core.Grid
@@ -9,6 +10,9 @@ namespace Unidad.Core.Grid
 
         public Vector2 ToWorldCenter(float cellSize) =>
             new(X * cellSize + cellSize * 0.5f, Y * cellSize + cellSize * 0.5f);
+
+        public int ManhattanDistanceTo(GridPosition other)
+            => Math.Abs(X - other.X) + Math.Abs(Y - other.Y);
 
         public override string ToString() => $"({X}, {Y})";
     }

@@ -31,6 +31,9 @@ namespace Unidad.Core.UI.Components
 
         private float _charWidth;
         private float _lineHeight;
+        private float _baseCharWidth;
+        private float _baseLineHeight;
+        private float _baseFontSize;
         private bool _metricsReady;
         private bool _caretVisible = true;
         private IVisualElementScheduledItem _caretBlink;
@@ -88,6 +91,7 @@ namespace Unidad.Core.UI.Components
         public IReadOnlyList<Label> CharLabels => _charLabels;
         public float CharWidth => _charWidth;
         public float LineHeight => _lineHeight;
+        public float BaseCharWidthRatio => _baseFontSize > 0 ? _baseCharWidth / _baseFontSize : 0.6f;
 
         public AnimatedCodeField()
         {
@@ -192,12 +196,29 @@ namespace Unidad.Core.UI.Components
 
         public void SetCharFontSize(float size)
         {
+            if (size <= 0) return;
             _charFontSize = size;
-            style.fontSize = size;
-            _refLabel.style.fontSize = size;
             foreach (var label in _charLabels)
                 label.style.fontSize = size;
-            _metricsReady = false;
+
+            // Scale metrics from the base refLabel measurement rather than
+            // resizing _refLabel itself (which would trigger GeometryChangedEvent
+            // feedback loops and corrupt the reference measurement).
+            if (_metricsReady && _baseCharWidth > 0)
+            {
+                var scale = size / _baseFontSize;
+                _charWidth = _baseCharWidth * scale;
+                _lineHeight = _baseLineHeight * scale;
+
+                // Re-apply explicit width to space labels (they don't scale with fontSize)
+                foreach (var label in _charLabels)
+                {
+                    if (label.text == " ")
+                        label.style.width = _charWidth;
+                }
+
+                UpdateCaretPosition();
+            }
         }
 
         public void SetFont(Font font)
@@ -333,6 +354,23 @@ namespace Unidad.Core.UI.Components
             _lineHeight = h;
             _metricsReady = true;
 
+            // Store base metrics for SetCharFontSize scaling
+            if (_baseCharWidth <= 0)
+            {
+                _baseCharWidth = w;
+                _baseLineHeight = h;
+                _baseFontSize = _refLabel.resolvedStyle.fontSize;
+                if (_baseFontSize <= 0) _baseFontSize = h; // fallback
+            }
+
+            // If a custom char font size was set before metrics were ready, apply scaling now
+            if (_charFontSize > 0 && _baseFontSize > 0)
+            {
+                var scale = _charFontSize / _baseFontSize;
+                _charWidth = _baseCharWidth * scale;
+                _lineHeight = _baseLineHeight * scale;
+            }
+
             // Force width on space labels that collapse to zero
             foreach (var label in _charLabels)
             {
@@ -356,8 +394,18 @@ namespace Unidad.Core.UI.Components
         private (float x, float y, float height) GetCaretPosition(int lineIdx, int col)
         {
             var padLeft = _linesContainer.resolvedStyle.paddingLeft;
-            var padTop = _linesContainer.resolvedStyle.paddingTop;
-            return (col * _charWidth + padLeft, lineIdx * _lineHeight + padTop, _lineHeight);
+            // Use actual line element Y position to account for flex centering
+            float y;
+            if (lineIdx >= 0 && lineIdx < _linesContainer.childCount)
+            {
+                y = _linesContainer[lineIdx].layout.y;
+            }
+            else
+            {
+                var padTop = _linesContainer.resolvedStyle.paddingTop;
+                y = lineIdx * _lineHeight + padTop;
+            }
+            return (col * _charWidth + padLeft, y, _lineHeight);
         }
 
         // --- Private: Caret ---
@@ -495,8 +543,17 @@ namespace Unidad.Core.UI.Components
             var text = _hiddenInput.value ?? "";
             var lines = text.Split('\n');
             var adjustedX = localPos.x - _linesContainer.resolvedStyle.paddingLeft;
-            var adjustedY = localPos.y - _linesContainer.resolvedStyle.paddingTop;
-            int lineIdx = Mathf.Clamp(Mathf.FloorToInt(adjustedY / _lineHeight), 0, lines.Length - 1);
+
+            // Find closest line by actual layout positions (accounts for flex centering)
+            int lineIdx = 0;
+            for (int i = 0; i < _linesContainer.childCount && i < lines.Length; i++)
+            {
+                var lineY = _linesContainer[i].layout.y;
+                if (localPos.y >= lineY)
+                    lineIdx = i;
+            }
+            lineIdx = Mathf.Clamp(lineIdx, 0, lines.Length - 1);
+
             int col = Mathf.Clamp(Mathf.RoundToInt(adjustedX / _charWidth), 0, lines[lineIdx].Length);
             int idx = LineColToIndex(lineIdx, col);
             return idx;

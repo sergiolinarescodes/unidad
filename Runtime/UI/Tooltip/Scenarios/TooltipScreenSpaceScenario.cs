@@ -130,7 +130,7 @@ namespace Unidad.Core.UI.Tooltip.Scenarios
         protected override ScenarioVerificationResult VerifyInternal(ScenarioParameterOverrides overrides)
         {
             var buttonCount = ResolveParam<int>(overrides, "buttonCount");
-            var expected = System.Math.Min(buttonCount, 12);
+            var expected = Math.Min(buttonCount, 12);
 
             var checks = new List<ScenarioVerificationResult.CheckResult>
             {
