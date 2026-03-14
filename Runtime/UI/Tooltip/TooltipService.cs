@@ -82,6 +82,7 @@ namespace Unidad.Core.UI.Tooltip
             container.style.paddingTop = style.PaddingV;
             container.style.paddingBottom = style.PaddingV;
             container.style.maxWidth = style.MaxWidth;
+            container.style.overflow = Overflow.Hidden;
             container.style.opacity = 0;
             container.pickingMode = PickingMode.Ignore;
 
@@ -135,6 +136,17 @@ namespace Unidad.Core.UI.Tooltip
             }
 
             Publish(new TooltipShownEvent(id, false));
+
+            // Schedule sub-tooltips if any
+            if (content.SubTooltips != null && content.SubTooltips.Count > 0)
+            {
+                var contentRef = content;
+                handle.SubTooltipTimer = container.schedule.Execute(() =>
+                {
+                    ShowSubTooltips(handle, contentRef, style ?? TooltipStyle.Default);
+                }).StartingIn((long)(style ?? TooltipStyle.Default).SubTooltipDelayMs);
+            }
+
             return handle;
         }
 
@@ -142,6 +154,23 @@ namespace Unidad.Core.UI.Tooltip
         {
             if (handle == null || !_activeTooltips.ContainsKey(handle.Id))
                 return;
+
+            // Cancel pending sub-tooltip timer
+            handle.SubTooltipTimer?.Pause();
+            handle.SubTooltipTimer = null;
+
+            // Cascade hide sub-tooltips
+            foreach (var sub in handle.SubHandles)
+            {
+                if (_activeTooltips.ContainsKey(sub.Id))
+                {
+                    _activeTooltips.Remove(sub.Id);
+                    _elementAnimator.Animate(sub.Root,
+                        new ElementAnimationConfig(ElementAnimationType.FadeOut, 0.1f),
+                        () => sub.Root.RemoveFromHierarchy());
+                }
+            }
+            handle.SubHandles.Clear();
 
             _activeTooltips.Remove(handle.Id);
 
@@ -160,6 +189,159 @@ namespace Unidad.Core.UI.Tooltip
             foreach (var kvp in new Dictionary<int, WorldTooltipHandle>(_activeWorldTooltips))
                 HideWorldInternal(kvp.Value);
         }
+
+        private void ShowSubTooltips(TooltipHandle parentHandle, TooltipContent parentContent, TooltipStyle parentStyle)
+        {
+            if (!_activeTooltips.ContainsKey(parentHandle.Id)) return;
+            if (_tooltipLayer == null) return;
+
+            var parentRect = parentHandle.Root.worldBound;
+            var gap = parentStyle.SubTooltipGap;
+            float yOffset = 0f;
+
+            foreach (var entry in parentContent.SubTooltips)
+            {
+                var subStyle = entry.Style ?? TooltipStyle.Default;
+                var subId = _nextId++;
+
+                var container = new VisualElement { name = $"sub-tooltip-{subId}" };
+                container.AddToClassList("unidad-tooltip");
+                container.AddToClassList("unidad-sub-tooltip");
+                container.style.position = Position.Absolute;
+                container.style.backgroundColor = subStyle.BackgroundColor;
+                container.style.borderTopColor = subStyle.BorderColor;
+                container.style.borderBottomColor = subStyle.BorderColor;
+                container.style.borderLeftColor = subStyle.BorderColor;
+                container.style.borderRightColor = subStyle.BorderColor;
+                container.style.borderTopWidth = subStyle.BorderWidth;
+                container.style.borderBottomWidth = subStyle.BorderWidth;
+                container.style.borderLeftWidth = subStyle.BorderWidth;
+                container.style.borderRightWidth = subStyle.BorderWidth;
+                container.style.borderTopLeftRadius = subStyle.BorderRadius;
+                container.style.borderTopRightRadius = subStyle.BorderRadius;
+                container.style.borderBottomLeftRadius = subStyle.BorderRadius;
+                container.style.borderBottomRightRadius = subStyle.BorderRadius;
+                container.style.paddingLeft = subStyle.PaddingH;
+                container.style.paddingRight = subStyle.PaddingH;
+                container.style.paddingTop = subStyle.PaddingV;
+                container.style.paddingBottom = subStyle.PaddingV;
+                container.style.maxWidth = subStyle.MaxWidth;
+                container.style.opacity = 0;
+                container.pickingMode = PickingMode.Ignore;
+
+                if (entry.Content.IsCustom)
+                {
+                    var custom = entry.Content.CustomBuilder();
+                    container.Add(custom);
+                }
+                else
+                {
+                    var label = new Label(entry.Content.Text);
+                    label.AddToClassList("unidad-tooltip__text");
+                    label.style.color = subStyle.TextColor;
+                    label.style.fontSize = subStyle.FontSize;
+                    label.style.whiteSpace = WhiteSpace.Normal;
+                    container.Add(label);
+                }
+
+                var subHandle = new TooltipHandle(subId, container, null);
+                _activeTooltips[subId] = subHandle;
+                parentHandle.SubHandles.Add(subHandle);
+                _tooltipLayer.Add(container);
+
+                // Position after layout — with clamping/flipping
+                var preferredPlacement = entry.PreferredPlacement;
+                var capturedOffset = yOffset;
+                container.RegisterCallback<GeometryChangedEvent>(OnSubLayout);
+
+                void OnSubLayout(GeometryChangedEvent evt)
+                {
+                    container.UnregisterCallback<GeometryChangedEvent>(OnSubLayout);
+
+                    var subSize = new Vector2(container.resolvedStyle.width, container.resolvedStyle.height);
+                    var containerSize = new Vector2(
+                        _tooltipLayer.resolvedStyle.width,
+                        _tooltipLayer.resolvedStyle.height);
+
+                    // Try preferred placement, flip if it doesn't fit
+                    var resolvedPlacement = preferredPlacement;
+                    var pos = ComputeSubPosition(resolvedPlacement, parentRect, subSize, gap, capturedOffset);
+
+                    if (!FitsInBounds(pos, subSize, containerSize))
+                    {
+                        // Flip horizontally or vertically
+                        resolvedPlacement = FlipPlacement(resolvedPlacement);
+                        pos = ComputeSubPosition(resolvedPlacement, parentRect, subSize, gap, capturedOffset);
+
+                        // If still doesn't fit, try the other axis
+                        if (!FitsInBounds(pos, subSize, containerSize))
+                        {
+                            resolvedPlacement = resolvedPlacement is TooltipPlacement.Top or TooltipPlacement.Bottom
+                                ? TooltipPlacement.Right : TooltipPlacement.Bottom;
+                            pos = ComputeSubPosition(resolvedPlacement, parentRect, subSize, gap, capturedOffset);
+
+                            if (!FitsInBounds(pos, subSize, containerSize))
+                            {
+                                resolvedPlacement = FlipPlacement(resolvedPlacement);
+                                pos = ComputeSubPosition(resolvedPlacement, parentRect, subSize, gap, capturedOffset);
+                            }
+                        }
+                    }
+
+                    // Final clamp to container bounds
+                    pos.x = Mathf.Clamp(pos.x, 0, Mathf.Max(0, containerSize.x - subSize.x));
+                    pos.y = Mathf.Clamp(pos.y, 0, Mathf.Max(0, containerSize.y - subSize.y));
+
+                    container.style.left = pos.x;
+                    container.style.top = pos.y;
+
+                    var slideDir = resolvedPlacement switch
+                    {
+                        TooltipPlacement.Right => SlideDirection.Left,
+                        TooltipPlacement.Left => SlideDirection.Right,
+                        TooltipPlacement.Bottom => SlideDirection.Top,
+                        TooltipPlacement.Top => SlideDirection.Bottom,
+                        _ => SlideDirection.Left
+                    };
+
+                    _elementAnimator.Animate(container,
+                        new ElementAnimationConfig(ElementAnimationType.SlideIn, 0.2f, slideDir));
+                    _elementAnimator.Animate(container,
+                        new ElementAnimationConfig(ElementAnimationType.FadeIn, 0.2f));
+                }
+
+                yOffset += 50f; // approximate height; stacks vertically along parent edge
+            }
+        }
+
+        private static Vector2 ComputeSubPosition(TooltipPlacement placement, Rect parentRect,
+            Vector2 subSize, float gap, float stackOffset)
+        {
+            return placement switch
+            {
+                TooltipPlacement.Right => new Vector2(parentRect.xMax + gap, parentRect.yMin + stackOffset),
+                TooltipPlacement.Left => new Vector2(parentRect.xMin - subSize.x - gap, parentRect.yMin + stackOffset),
+                TooltipPlacement.Bottom => new Vector2(parentRect.xMin + stackOffset, parentRect.yMax + gap),
+                TooltipPlacement.Top => new Vector2(parentRect.xMin + stackOffset, parentRect.yMin - subSize.y - gap),
+                _ => new Vector2(parentRect.xMax + gap, parentRect.yMin + stackOffset)
+            };
+        }
+
+        private static bool FitsInBounds(Vector2 pos, Vector2 size, Vector2 container)
+        {
+            return pos.x >= 0 && pos.y >= 0 &&
+                   pos.x + size.x <= container.x &&
+                   pos.y + size.y <= container.y;
+        }
+
+        private static TooltipPlacement FlipPlacement(TooltipPlacement p) => p switch
+        {
+            TooltipPlacement.Right => TooltipPlacement.Left,
+            TooltipPlacement.Left => TooltipPlacement.Right,
+            TooltipPlacement.Top => TooltipPlacement.Bottom,
+            TooltipPlacement.Bottom => TooltipPlacement.Top,
+            _ => p
+        };
 
         private void PositionTooltip(TooltipHandle handle, TooltipAnchor anchor,
             TooltipPlacement placement, TooltipStyle style)

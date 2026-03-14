@@ -9,7 +9,7 @@ namespace Unidad.Core.Patterns.CommandQueue
     /// </summary>
     public sealed class CommandQueue
     {
-        private readonly Queue<ICommand> _queue = new();
+        private readonly LinkedList<ICommand> _queue = new();
 
         public bool IsPaused { get; private set; }
         public bool IsEmpty => _queue.Count == 0 && Current == null;
@@ -22,13 +22,18 @@ namespace Unidad.Core.Patterns.CommandQueue
 
         public void Enqueue(ICommand command)
         {
-            _queue.Enqueue(command);
+            _queue.AddLast(command);
+        }
+
+        public void InsertFront(ICommand command)
+        {
+            _queue.AddFirst(command);
         }
 
         public void EnqueueRange(IEnumerable<ICommand> commands)
         {
             foreach (var command in commands)
-                _queue.Enqueue(command);
+                _queue.AddLast(command);
         }
 
         public void Clear()
@@ -36,7 +41,10 @@ namespace Unidad.Core.Patterns.CommandQueue
             Current?.Cancel();
             Current = null;
             while (_queue.Count > 0)
-                _queue.Dequeue().Cancel();
+            {
+                _queue.First.Value.Cancel();
+                _queue.RemoveFirst();
+            }
         }
 
         public void Pause() => IsPaused = true;
@@ -50,7 +58,8 @@ namespace Unidad.Core.Patterns.CommandQueue
             if (Current == null)
             {
                 if (_queue.Count == 0) return;
-                Current = _queue.Dequeue();
+                Current = _queue.First.Value;
+                _queue.RemoveFirst();
             }
 
             var status = Current.Execute(context, deltaTime);

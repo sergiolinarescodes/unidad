@@ -18,6 +18,8 @@ namespace Unidad.Core.UI.Tooltip
         public int MaxWidth { get; init; } = 300;
         public float FadeInDuration { get; init; } = 0.15f;
         public float FadeOutDuration { get; init; } = 0.1f;
+        public float SubTooltipDelayMs { get; init; } = 1000f;
+        public int SubTooltipGap { get; init; } = 4;
 
         public static readonly TooltipStyle Default = new();
 

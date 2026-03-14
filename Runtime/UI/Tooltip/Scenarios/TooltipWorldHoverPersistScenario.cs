@@ -70,8 +70,8 @@ namespace Unidad.Core.UI.Tooltip.Scenarios
                 var renderer = cube.GetComponent<Renderer>();
                 if (renderer != null)
                 {
-                    renderer.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                    renderer.material.color = Color.HSVToRGB(0.55f + i * 0.15f, 0.7f, 0.9f);
+                    renderer.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                    renderer.sharedMaterial.color = Color.HSVToRGB(0.55f + i * 0.15f, 0.7f, 0.9f);
                 }
 
                 var style = new TooltipStyle

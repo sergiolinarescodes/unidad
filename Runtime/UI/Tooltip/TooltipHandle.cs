@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine.UIElements;
 
 namespace Unidad.Core.UI.Tooltip
@@ -8,6 +9,8 @@ namespace Unidad.Core.UI.Tooltip
         internal VisualElement Root { get; }
         internal VisualElement Arrow { get; }
         internal TooltipPlacement ResolvedPlacement { get; set; }
+        internal List<TooltipHandle> SubHandles { get; } = new();
+        internal IVisualElementScheduledItem SubTooltipTimer { get; set; }
 
         internal TooltipHandle(int id, VisualElement root, VisualElement arrow)
         {

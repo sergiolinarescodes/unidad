@@ -77,8 +77,8 @@ namespace Unidad.Core.UI.Tooltip.Scenarios
                 var renderer = cube.GetComponent<Renderer>();
                 if (renderer != null)
                 {
-                    renderer.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                    renderer.material.color = colors[i % colors.Length];
+                    renderer.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                    renderer.sharedMaterial.color = colors[i % colors.Length];
                 }
 
                 var color = colors[i % colors.Length];

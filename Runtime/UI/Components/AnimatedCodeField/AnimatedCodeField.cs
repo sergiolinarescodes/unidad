@@ -57,7 +57,21 @@ namespace Unidad.Core.UI.Components
         private float _highlightAnimStartTime;
         private IVisualElementScheduledItem _highlightAnimSchedule;
 
+        // Rejection animation state (runs in parallel with other animations)
+        private CrashAnimation _rejectionAnim;
+        private float _rejectionAnimStartTime;
+        private IVisualElementScheduledItem _rejectionAnimSchedule;
+
         public float TypingAnimationAmplitude { get; set; }
+
+        private bool _persistentFocus;
+        private bool _refocusScheduled;
+
+        public bool PersistentFocus
+        {
+            get => _persistentFocus;
+            set => _persistentFocus = value;
+        }
 
         public bool IsAnimating => _currentAnim != null;
 
@@ -147,6 +161,7 @@ namespace Unidad.Core.UI.Components
             _hiddenInput.RegisterValueChangedCallback(OnHiddenInputChanged);
             _hiddenInput.RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
             _hiddenInput.RegisterCallback<FocusInEvent>(OnInputFocusIn);
+            _hiddenInput.RegisterCallback<FocusOutEvent>(OnInputFocusOut);
 
             RegisterCallback<PointerDownEvent>(OnPointerDown, TrickleDown.TrickleDown);
             RegisterCallback<PointerMoveEvent>(OnPointerMove, TrickleDown.TrickleDown);
@@ -191,7 +206,10 @@ namespace Unidad.Core.UI.Components
 
         public new void Focus()
         {
+            var cursor = _hiddenInput.cursorIndex;
+            var select = _hiddenInput.selectIndex;
             _hiddenInput.Focus();
+            _hiddenInput.SelectRange(cursor, select);
         }
 
         public void SetCharFontSize(float size)
@@ -262,6 +280,7 @@ namespace Unidad.Core.UI.Components
         {
             CancelTypingAnimation();
             CancelHighlightAnimation();
+            CancelRejectionAnimation();
 
             if (_currentAnim == null) return;
 
@@ -635,6 +654,23 @@ namespace Unidad.Core.UI.Components
                 ShowCaret();
         }
 
+        private void OnInputFocusOut(FocusOutEvent evt)
+        {
+            if (!_persistentFocus || !enabledSelf || isReadOnly || panel == null)
+                return;
+            if (_refocusScheduled)
+                return;
+
+            _refocusScheduled = true;
+            schedule.Execute(() =>
+            {
+                _refocusScheduled = false;
+                if (!_persistentFocus || !enabledSelf || isReadOnly || panel == null)
+                    return;
+                _hiddenInput.Focus();
+            });
+        }
+
         private void OnAttachToPanel(AttachToPanelEvent evt)
         {
             evt.destinationPanel.visualTree.RegisterCallback<PointerDownEvent>(
@@ -651,7 +687,13 @@ namespace Unidad.Core.UI.Components
         {
             if (evt.target is VisualElement target && !Contains(target) && target != this)
             {
-                HideCaret();
+                if (_persistentFocus && enabledSelf && !isReadOnly)
+                {
+                    _hiddenInput.Focus();
+                    ShowCaret();
+                }
+                else
+                    HideCaret();
             }
         }
 
@@ -788,6 +830,53 @@ namespace Unidad.Core.UI.Components
 
             if (!stillRunning)
                 CancelHighlightAnimation();
+        }
+
+        // --- Public: Rejection Animation ---
+
+        public void PlayRejectionAnimation(List<int> charIndices)
+        {
+            CancelRejectionAnimation();
+
+            if (charIndices == null || charIndices.Count == 0 || _charLabels.Count == 0) return;
+
+            _rejectionAnim = new CrashAnimation();
+            _rejectionAnim.SetTargetIndices(charIndices);
+            _rejectionAnimStartTime = Time.realtimeSinceStartup;
+            _rejectionAnim.Initialize(_charLabels.Count);
+            _rejectionAnimSchedule = schedule.Execute(RejectionAnimationTick).Every(16);
+        }
+
+        private void CancelRejectionAnimation()
+        {
+            if (_rejectionAnim == null) return;
+
+            for (int i = 0; i < _charLabels.Count; i++)
+                _rejectionAnim.Reset(_charLabels[i]);
+
+            _rejectionAnim = null;
+
+            if (_rejectionAnimSchedule != null)
+            {
+                _rejectionAnimSchedule.Pause();
+                _rejectionAnimSchedule = null;
+            }
+        }
+
+        private void RejectionAnimationTick()
+        {
+            if (_rejectionAnim == null) return;
+
+            float elapsed = Time.realtimeSinceStartup - _rejectionAnimStartTime;
+            bool stillRunning = false;
+            for (int i = 0; i < _charLabels.Count; i++)
+            {
+                if (_rejectionAnim.Update(elapsed, i, _charLabels.Count, _charLabels[i]))
+                    stillRunning = true;
+            }
+
+            if (!stillRunning)
+                CancelRejectionAnimation();
         }
 
         // --- Private: Index ↔ LineCol Helpers ---
