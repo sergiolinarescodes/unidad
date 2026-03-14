@@ -413,15 +413,17 @@ namespace Unidad.Core.UI.Components
         private (float x, float y, float height) GetCaretPosition(int lineIdx, int col)
         {
             var padLeft = _linesContainer.resolvedStyle.paddingLeft;
-            // Use actual line element Y position to account for flex centering
+            var padTop = _linesContainer.resolvedStyle.paddingTop;
             float y;
-            if (lineIdx >= 0 && lineIdx < _linesContainer.childCount)
+            if (lineIdx >= 0 && lineIdx < _linesContainer.childCount
+                && _linesContainer[lineIdx].layout.height > 0)
             {
+                // Use actual line element Y position (accounts for flex centering)
                 y = _linesContainer[lineIdx].layout.y;
             }
             else
             {
-                var padTop = _linesContainer.resolvedStyle.paddingTop;
+                // Fallback: calculate from metrics (before layout resolves or out of range)
                 y = lineIdx * _lineHeight + padTop;
             }
             return (col * _charWidth + padLeft, y, _lineHeight);
@@ -563,13 +565,23 @@ namespace Unidad.Core.UI.Components
             var lines = text.Split('\n');
             var adjustedX = localPos.x - _linesContainer.resolvedStyle.paddingLeft;
 
-            // Find closest line by actual layout positions (accounts for flex centering)
+            // Find closest line — prefer actual layout positions, fall back to metrics
             int lineIdx = 0;
-            for (int i = 0; i < _linesContainer.childCount && i < lines.Length; i++)
+            bool useLayout = _linesContainer.childCount > 0
+                             && _linesContainer[0].layout.height > 0;
+            if (useLayout)
             {
-                var lineY = _linesContainer[i].layout.y;
-                if (localPos.y >= lineY)
-                    lineIdx = i;
+                for (int i = 0; i < _linesContainer.childCount && i < lines.Length; i++)
+                {
+                    if (localPos.y >= _linesContainer[i].layout.y)
+                        lineIdx = i;
+                }
+            }
+            else
+            {
+                var padTop = _linesContainer.resolvedStyle.paddingTop;
+                var adjustedY = localPos.y - padTop;
+                lineIdx = Mathf.FloorToInt(adjustedY / _lineHeight);
             }
             lineIdx = Mathf.Clamp(lineIdx, 0, lines.Length - 1);
 
