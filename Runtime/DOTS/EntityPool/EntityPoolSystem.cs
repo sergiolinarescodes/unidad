@@ -9,13 +9,18 @@ namespace Unidad.Core.DOTS
     public partial struct EntityPoolSystem : ISystem
     {
         EntityQuery _prototypeQuery;
+        EntityQuery _availableQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            // Build a query for prototypes (used to look up prototype by PoolId)
             _prototypeQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<PoolPrototype>()
+                .Build(ref state);
+
+            _availableQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<Pooled, Disabled>()
+                .WithOptions(EntityQueryOptions.IncludeDisabledEntities)
                 .Build(ref state);
         }
 
@@ -44,14 +49,8 @@ namespace Unidad.Core.DOTS
             ecb.Dispose();
 
             // === Phase 3: Process acquisitions ===
-            // Gather available (disabled) pooled entities
-            var availableQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<Pooled, Disabled>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities)
-                .Build(ref state);
-
-            var availableEntities = availableQuery.ToEntityArray(Allocator.Temp);
-            var availablePooled = availableQuery.ToComponentDataArray<Pooled>(Allocator.Temp);
+            var availableEntities = _availableQuery.ToEntityArray(Allocator.Temp);
+            var availablePooled = _availableQuery.ToComponentDataArray<Pooled>(Allocator.Temp);
 
             // Gather prototypes for fallback instantiation
             var prototypeEntities = _prototypeQuery.ToEntityArray(Allocator.Temp);

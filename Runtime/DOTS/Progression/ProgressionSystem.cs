@@ -12,7 +12,6 @@ namespace Unidad.Core.DOTS
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ProgressionSystem : ISystem
     {
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // Clear previous frame's event tags
