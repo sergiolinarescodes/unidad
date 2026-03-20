@@ -17,31 +17,11 @@ namespace Unidad.Core.DOTS
         public void OnUpdate(ref SystemState state)
         {
             float dt = SystemAPI.Time.DeltaTime;
-
-            // Clear previous frame flags
-            new ClearFlagsJob().ScheduleParallel();
-            state.Dependency.Complete();
-
-            // Process command queues
-            new ProcessQueueJob { DeltaTime = dt }.ScheduleParallel();
+            new ClearAndProcessJob { DeltaTime = dt }.ScheduleParallel();
         }
 
         [BurstCompile]
-        partial struct ClearFlagsJob : IJobEntity
-        {
-            void Execute(
-                EnabledRefRW<CommandCompleted> completed,
-                EnabledRefRW<CommandFailed> failed,
-                EnabledRefRW<QueueEmpty> empty)
-            {
-                completed.ValueRW = false;
-                failed.ValueRW = false;
-                empty.ValueRW = false;
-            }
-        }
-
-        [BurstCompile]
-        partial struct ProcessQueueJob : IJobEntity
+        partial struct ClearAndProcessJob : IJobEntity
         {
             public float DeltaTime;
 
@@ -52,6 +32,11 @@ namespace Unidad.Core.DOTS
                 EnabledRefRW<CommandFailed> failed,
                 EnabledRefRW<QueueEmpty> empty)
             {
+                // Clear previous frame's flags
+                completed.ValueRW = false;
+                failed.ValueRW = false;
+                empty.ValueRW = false;
+
                 if (queue.IsPaused)
                     return;
 
@@ -63,11 +48,9 @@ namespace Unidad.Core.DOTS
 
                 var cmd = commands[queue.CurrentIndex];
 
-                // Start pending commands
                 if (cmd.Status == CommandStatus.Pending)
                     cmd.Status = CommandStatus.Running;
 
-                // Process built-in command types
                 if (cmd.Status == CommandStatus.Running)
                 {
                     switch (cmd.Type)
@@ -81,15 +64,11 @@ namespace Unidad.Core.DOTS
                             if (cmd.Elapsed >= cmd.Duration)
                                 cmd.Status = CommandStatus.Completed;
                             break;
-
-                        // Game-specific types are handled by game systems
-                        // that run before this system and set Status directly
                     }
                 }
 
                 commands[queue.CurrentIndex] = cmd;
 
-                // Advance on completion or failure
                 if (cmd.Status == CommandStatus.Completed)
                 {
                     completed.ValueRW = true;

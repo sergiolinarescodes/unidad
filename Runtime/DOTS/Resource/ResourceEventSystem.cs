@@ -8,6 +8,12 @@ namespace Unidad.Core.DOTS
     public partial struct ResourceEventClearSystem : ISystem
     {
         [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<ResourceElement>();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             new ClearEventsJob().ScheduleParallel();
@@ -35,6 +41,12 @@ namespace Unidad.Core.DOTS
     public partial struct ResourceEventSystem : ISystem
     {
         [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<ResourceElement>();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             new ProcessEventsJob().ScheduleParallel();
@@ -45,7 +57,6 @@ namespace Unidad.Core.DOTS
         {
             void Execute(
                 in DynamicBuffer<ResourceChangeRecord> changes,
-                in DynamicBuffer<ResourceElement> resources,
                 EnabledRefRW<ResourceChanged> changed,
                 EnabledRefRW<ResourceDepleted> depleted,
                 EnabledRefRW<ResourceFilled> filled)
@@ -59,20 +70,13 @@ namespace Unidad.Core.DOTS
                 {
                     var record = changes[i];
 
-                    // Find current resource to get effective min
-                    for (int j = 0; j < resources.Length; j++)
-                    {
-                        if (resources[j].ResourceId != record.ResourceId)
-                            continue;
+                    // Fire depleted only on downward threshold crossing
+                    if (record.NewValue <= record.EffectiveMin && record.OldValue > record.EffectiveMin)
+                        depleted.ValueRW = true;
 
-                        if (record.NewValue <= resources[j].BaseMin)
-                            depleted.ValueRW = true;
-
-                        if (record.NewValue >= record.EffectiveMax)
-                            filled.ValueRW = true;
-
-                        break;
-                    }
+                    // Fire filled only on upward threshold crossing
+                    if (record.NewValue >= record.EffectiveMax && record.OldValue < record.EffectiveMax)
+                        filled.ValueRW = true;
                 }
             }
         }

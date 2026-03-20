@@ -7,13 +7,11 @@ namespace Unidad.Core.DOTS
     [BurstCompile]
     public static class ModifierUtility
     {
-        [BurstCompile]
         public static float Evaluate(in DynamicBuffer<ModifierElement> buffer, float baseValue)
         {
             if (buffer.Length == 0)
                 return baseValue;
 
-            // Copy active modifiers to temp list for sorting
             var active = new NativeList<ModifierElement>(buffer.Length, Allocator.Temp);
             for (int i = 0; i < buffer.Length; i++)
             {
@@ -21,7 +19,6 @@ namespace Unidad.Core.DOTS
                     active.Add(buffer[i]);
             }
 
-            // Sort by priority descending (higher priority first)
             SortByPriorityDescending(ref active);
 
             float result = baseValue;
@@ -34,9 +31,14 @@ namespace Unidad.Core.DOTS
             return result;
         }
 
-        [BurstCompile]
-        public static float EvaluateRaw(ref NativeList<ModifierElement> active, float baseValue)
+        /// <summary>
+        /// Sorts the provided list by priority descending, then evaluates.
+        /// Use this when callers build their own filtered NativeList.
+        /// </summary>
+        public static float EvaluateSorted(ref NativeList<ModifierElement> active, float baseValue)
         {
+            SortByPriorityDescending(ref active);
+
             float result = baseValue;
             for (int i = 0; i < active.Length; i++)
             {
@@ -45,7 +47,6 @@ namespace Unidad.Core.DOTS
             return result;
         }
 
-        [BurstCompile]
         public static float Apply(in ModifierElement mod, float value)
         {
             switch (mod.Op)
@@ -65,7 +66,6 @@ namespace Unidad.Core.DOTS
             }
         }
 
-        [BurstCompile]
         public static bool Remove(ref DynamicBuffer<ModifierElement> buffer, int modifierId)
         {
             for (int i = 0; i < buffer.Length; i++)
@@ -79,7 +79,6 @@ namespace Unidad.Core.DOTS
             return false;
         }
 
-        [BurstCompile]
         public static bool Has(in DynamicBuffer<ModifierElement> buffer, int modifierId)
         {
             for (int i = 0; i < buffer.Length; i++)
@@ -90,7 +89,6 @@ namespace Unidad.Core.DOTS
             return false;
         }
 
-        [BurstCompile]
         public static void SetActive(ref DynamicBuffer<ModifierElement> buffer, int modifierId, bool active)
         {
             for (int i = 0; i < buffer.Length; i++)

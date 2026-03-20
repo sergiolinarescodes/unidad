@@ -18,15 +18,11 @@ namespace Unidad.Core.DOTS
         {
             float dt = SystemAPI.Time.DeltaTime;
 
-            // Clear previous frame's completion flags
-            new ClearCompletedJob().ScheduleParallel();
+            // Single job: clear previous flags then tick
+            new ClearAndTickJob { DeltaTime = dt }.ScheduleParallel();
             state.Dependency.Complete();
 
-            // Tick active timers
-            new TickTimersJob { DeltaTime = dt }.ScheduleParallel();
-            state.Dependency.Complete();
-
-            // Destroy cancelled timers (query only matches entities where TimerCancelled is enabled)
+            // Destroy cancelled timers on main thread (requires sync)
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
             foreach (var (_, entity) in
                 SystemAPI.Query<RefRO<TimerCancelled>>()
@@ -39,21 +35,15 @@ namespace Unidad.Core.DOTS
         }
 
         [BurstCompile]
-        partial struct ClearCompletedJob : IJobEntity
-        {
-            void Execute(EnabledRefRW<TimerCompleted> completed)
-            {
-                completed.ValueRW = false;
-            }
-        }
-
-        [BurstCompile]
-        partial struct TickTimersJob : IJobEntity
+        partial struct ClearAndTickJob : IJobEntity
         {
             public float DeltaTime;
 
             void Execute(ref TimerData timer, EnabledRefRW<TimerCompleted> completed)
             {
+                // Clear previous frame's flag
+                completed.ValueRW = false;
+
                 if (timer.Paused)
                     return;
 

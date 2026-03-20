@@ -8,7 +8,6 @@ namespace Unidad.Core.DOTS
     [BurstCompile]
     public static class InventoryUtility
     {
-        [BurstCompile]
         public static int GetEffectiveCapacity(in InventoryData data,
             in DynamicBuffer<InventoryCapacityModifier> capMods)
         {
@@ -22,7 +21,7 @@ namespace Unidad.Core.DOTS
                     active.Add(capMods[i].Modifier);
             }
 
-            float result = ModifierUtility.EvaluateRaw(ref active, data.BaseSlotCount);
+            float result = ModifierUtility.EvaluateSorted(ref active, data.BaseSlotCount);
             active.Dispose();
 
             int capacity = (int)math.round(result);
@@ -33,7 +32,6 @@ namespace Unidad.Core.DOTS
         /// Adds items using 2-pass approach: fill partial stacks first, then empty slots.
         /// Returns the overflow count (items that could not be added).
         /// </summary>
-        [BurstCompile]
         public static int Add(
             ref DynamicBuffer<InventorySlotElement> slots,
             in InventoryData data,
@@ -74,7 +72,6 @@ namespace Unidad.Core.DOTS
         /// <summary>
         /// Removes items back-to-front. Returns true if the full amount was removed.
         /// </summary>
-        [BurstCompile]
         public static bool TryRemove(
             ref DynamicBuffer<InventorySlotElement> slots,
             in InventoryData data,
@@ -83,7 +80,6 @@ namespace Unidad.Core.DOTS
         {
             int effectiveCap = GetEffectiveCapacity(in data, in capMods);
 
-            // First check if we have enough
             int total = 0;
             int limit = math.min(slots.Length, effectiveCap);
             for (int i = 0; i < limit; i++)
@@ -95,7 +91,6 @@ namespace Unidad.Core.DOTS
             if (total < count)
                 return false;
 
-            // Remove back-to-front
             int remaining = count;
             for (int i = limit - 1; i >= 0 && remaining > 0; i--)
             {
@@ -116,7 +111,6 @@ namespace Unidad.Core.DOTS
             return true;
         }
 
-        [BurstCompile]
         public static void SwapSlots(
             ref DynamicBuffer<InventorySlotElement> srcSlots, int srcIdx,
             ref DynamicBuffer<InventorySlotElement> dstSlots, int dstIdx)
@@ -126,7 +120,6 @@ namespace Unidad.Core.DOTS
             dstSlots[dstIdx] = temp;
         }
 
-        [BurstCompile]
         public static int GetCount(in DynamicBuffer<InventorySlotElement> slots, int itemId, int effectiveCap)
         {
             int total = 0;
@@ -139,7 +132,6 @@ namespace Unidad.Core.DOTS
             return total;
         }
 
-        [BurstCompile]
         public static int GetUsedSlotCount(in DynamicBuffer<InventorySlotElement> slots, int effectiveCap)
         {
             int used = 0;
@@ -152,7 +144,6 @@ namespace Unidad.Core.DOTS
             return used;
         }
 
-        [BurstCompile]
         public static bool IsFull(in DynamicBuffer<InventorySlotElement> slots, int effectiveCap)
         {
             int limit = math.min(slots.Length, effectiveCap);

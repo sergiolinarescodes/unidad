@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -20,9 +21,9 @@ namespace Unidad.Core.DOTS
 
     public struct CommandQueueData : IComponentData
     {
+        [MarshalAs(UnmanagedType.U1)]
         public bool IsPaused;
         public int CurrentIndex;
-        public int Count;
     }
 
     public struct CommandEntry : IBufferElementData

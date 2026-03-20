@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Unity.Entities;
 
 namespace Unidad.Core.DOTS
@@ -6,7 +7,9 @@ namespace Unidad.Core.DOTS
     {
         public float Duration;
         public float Elapsed;
+        [MarshalAs(UnmanagedType.U1)]
         public bool Paused;
+        [MarshalAs(UnmanagedType.U1)]
         public bool Loop;
     }
 

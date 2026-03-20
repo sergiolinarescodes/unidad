@@ -1,11 +1,11 @@
 {
-    "name": "Unidad.Core.DOTS",
-    "rootNamespace": "Unidad.Core.DOTS",
+    "name": "Unidad.Core.DOTS.Bridge",
+    "rootNamespace": "Unidad.Core.DOTS.Bridge",
     "references": [
         "GUID:734d92eba21c94caba915361bd5ac177",
         "GUID:e0cd26848372d4e5c891c569017e11f1",
-        "GUID:2665a8d13d1b3f18800f46e256720795",
-        "GUID:d8b63aba1907145bea998dd612889d6b"
+        "GUID:6449d6910ecfd24439dfa3338780ce53",
+        "GUID:ad7f56e8464770e4f9cbdec9b72b9ee7"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -16,33 +16,21 @@ namespace Unidad.Core.DOTS
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Clear previous frame flags then process transitions
-            new ClearFlagsJob().ScheduleParallel();
-            state.Dependency.Complete();
-
-            new ProcessTransitionsJob().ScheduleParallel();
+            new ClearAndTransitionJob().ScheduleParallel();
         }
 
         [BurstCompile]
-        partial struct ClearFlagsJob : IJobEntity
-        {
-            void Execute(
-                EnabledRefRW<StateEntered> entered,
-                EnabledRefRW<StateExited> exited)
-            {
-                entered.ValueRW = false;
-                exited.ValueRW = false;
-            }
-        }
-
-        [BurstCompile]
-        partial struct ProcessTransitionsJob : IJobEntity
+        partial struct ClearAndTransitionJob : IJobEntity
         {
             void Execute(
                 ref StateMachineData sm,
                 EnabledRefRW<StateEntered> entered,
                 EnabledRefRW<StateExited> exited)
             {
+                // Clear previous frame's flags
+                entered.ValueRW = false;
+                exited.ValueRW = false;
+
                 if (!sm.TransitionRequested)
                     return;
 

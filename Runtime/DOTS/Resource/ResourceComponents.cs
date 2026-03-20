@@ -33,5 +33,6 @@ namespace Unidad.Core.DOTS
         public float OldValue;
         public float NewValue;
         public float EffectiveMax;
+        public float EffectiveMin;
     }
 }
