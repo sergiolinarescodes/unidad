@@ -74,7 +74,10 @@ namespace Unidad.Core.Physics2D
 
         private List<Collider2D> OverlapCircleNonAlloc(Vector2 center, float radius, int layerMask)
         {
-            var count = UnityEngine.Physics2D.OverlapCircleNonAlloc(center, radius, _overlapBuffer, layerMask);
+            var filter = new ContactFilter2D();
+            filter.SetLayerMask(layerMask);
+            filter.useTriggers = true;
+            var count = UnityEngine.Physics2D.OverlapCircle(center, radius, filter, _overlapBuffer);
             var result = new List<Collider2D>(count);
             for (int i = 0; i < count; i++)
                 result.Add(_overlapBuffer[i]);

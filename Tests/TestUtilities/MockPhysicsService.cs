@@ -17,7 +17,7 @@ namespace Unidad.Core.Tests.Tests.TestUtilities
         public bool CheckSphereResult { get; set; }
 
         private int _nextEntityId = 1;
-        private readonly Dictionary<int, PhysicsEntityId> _registeredEntities = new();
+        private readonly Dictionary<EntityId, PhysicsEntityId> _registeredEntities = new();
 
         public bool Raycast(Vector3 origin, Vector3 direction, out RaycastHit hit, float maxDistance)
         {
@@ -48,18 +48,18 @@ namespace Unidad.Core.Tests.Tests.TestUtilities
 
         public PhysicsEntityId RegisterEntity(GameObject gameObject, string tag)
         {
-            var instanceId = gameObject.GetInstanceID();
-            if (_registeredEntities.TryGetValue(instanceId, out var existing))
+            var entityId = gameObject.GetEntityId();
+            if (_registeredEntities.TryGetValue(entityId, out var existing))
                 return existing;
 
             var id = new PhysicsEntityId(_nextEntityId++);
-            _registeredEntities[instanceId] = id;
+            _registeredEntities[entityId] = id;
             return id;
         }
 
         public void UnregisterEntity(PhysicsEntityId id)
         {
-            int toRemove = -1;
+            EntityId toRemove = EntityId.None;
             foreach (var kvp in _registeredEntities)
             {
                 if (kvp.Value == id)
@@ -68,14 +68,14 @@ namespace Unidad.Core.Tests.Tests.TestUtilities
                     break;
                 }
             }
-            if (toRemove >= 0)
+            if (toRemove.IsValid())
                 _registeredEntities.Remove(toRemove);
         }
 
         public PhysicsEntityId GetEntityId(GameObject gameObject)
         {
-            var instanceId = gameObject.GetInstanceID();
-            return _registeredEntities.TryGetValue(instanceId, out var id) ? id : PhysicsEntityId.None;
+            var entityId = gameObject.GetEntityId();
+            return _registeredEntities.TryGetValue(entityId, out var id) ? id : PhysicsEntityId.None;
         }
     }
 }

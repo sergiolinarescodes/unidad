@@ -12,19 +12,19 @@ namespace Unidad.Core.Physics2D
         }
 
         private readonly Dictionary<int, EntityData> _entities = new();
-        private readonly Dictionary<int, int> _instanceIdToEntityId = new();
+        private readonly Dictionary<EntityId, int> _entityIdToPhysicsId = new();
         private int _nextId = 1;
 
         public Physics2DEntityId Register(GameObject gameObject, string tag)
         {
-            var instanceId = gameObject.GetInstanceID();
+            var entityId = gameObject.GetEntityId();
 
-            if (_instanceIdToEntityId.TryGetValue(instanceId, out var existingId))
+            if (_entityIdToPhysicsId.TryGetValue(entityId, out var existingId))
                 return new Physics2DEntityId(existingId);
 
             var id = _nextId++;
             _entities[id] = new EntityData { GameObject = gameObject, Tag = tag };
-            _instanceIdToEntityId[instanceId] = id;
+            _entityIdToPhysicsId[entityId] = id;
             return new Physics2DEntityId(id);
         }
 
@@ -33,7 +33,7 @@ namespace Unidad.Core.Physics2D
             if (!_entities.TryGetValue(id.Value, out var data)) return;
 
             if (data.GameObject != null)
-                _instanceIdToEntityId.Remove(data.GameObject.GetInstanceID());
+                _entityIdToPhysicsId.Remove(data.GameObject.GetEntityId());
 
             _entities.Remove(id.Value);
         }
@@ -66,9 +66,9 @@ namespace Unidad.Core.Physics2D
         {
             if (gameObject == null) return Physics2DEntityId.None;
 
-            var instanceId = gameObject.GetInstanceID();
-            return _instanceIdToEntityId.TryGetValue(instanceId, out var entityId)
-                ? new Physics2DEntityId(entityId)
+            var entityId = gameObject.GetEntityId();
+            return _entityIdToPhysicsId.TryGetValue(entityId, out var physicsId)
+                ? new Physics2DEntityId(physicsId)
                 : Physics2DEntityId.None;
         }
     }
