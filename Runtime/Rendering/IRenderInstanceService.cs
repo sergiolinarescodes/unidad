@@ -74,6 +74,7 @@ namespace Unidad.Core.Rendering
         public ComputeBuffer AnimParamsBuffer;
         public int Count;
         public bool HasAnimation;
+        public bool CastShadows;
     }
 
     /// <summary>

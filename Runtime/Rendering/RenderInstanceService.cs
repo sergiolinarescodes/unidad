@@ -145,7 +145,8 @@ namespace Unidad.Core.Rendering
                     ColorsBuffer = buf.Colors,
                     AnimParamsBuffer = hasAnim ? buf.AnimParams : null,
                     Count = s.Count,
-                    HasAnimation = hasAnim
+                    HasAnimation = hasAnim,
+                    CastShadows = true
                 };
             }
 
