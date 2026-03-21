@@ -1,27 +1,28 @@
 {
-  "name": "Unidad.Core.Runtime",
-  "rootNamespace": "Unidad.Core",
-  "references": [
-    "Reflex",
-    "TextAnimationsForUIToolkit",
-    "PrimeTween.Runtime",
-    "Unity.InputSystem",
-    "Unity.Collections",
-    "Unity.Mathematics"
-  ],
-  "includePlatforms": [],
-  "excludePlatforms": [],
-  "allowUnsafeCode": false,
-  "overrideReferences": false,
-  "precompiledReferences": [],
-  "autoReferenced": true,
-  "defineConstraints": [],
-  "versionDefines": [
-    {
-      "name": "com.unity.inputsystem",
-      "expression": "",
-      "define": "UNIDAD_INPUT_SYSTEM"
-    }
-  ],
-  "noEngineReferences": false
+    "name": "Unidad.Core.Runtime",
+    "rootNamespace": "Unidad.Core",
+    "references": [
+        "Reflex",
+        "TextAnimationsForUIToolkit",
+        "PrimeTween.Runtime",
+        "Unity.InputSystem",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "Unidad.Core.DOTS"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "",
+            "define": "UNIDAD_INPUT_SYSTEM"
+        }
+    ],
+    "noEngineReferences": false
 }
