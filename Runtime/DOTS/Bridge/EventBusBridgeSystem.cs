@@ -221,6 +221,7 @@ namespace Unidad.Core.DOTS.Bridge
                 _eventBus.Publish(new BridgedTreeReset { TreeEntity = entity });
             }
         }
+
     }
 
     // Bridged event structs — consumed by MonoBehaviour code via IEventBus
@@ -308,5 +309,10 @@ namespace Unidad.Core.DOTS.Bridge
     public struct BridgedTreeReset
     {
         public Entity TreeEntity;
+    }
+
+    public struct BridgedRenderBatchUpdated
+    {
+        public Entity Entity;
     }
 }

@@ -5,7 +5,9 @@
     "Reflex",
     "TextAnimationsForUIToolkit",
     "PrimeTween.Runtime",
-    "Unity.InputSystem"
+    "Unity.InputSystem",
+    "Unity.Collections",
+    "Unity.Mathematics"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
