@@ -48,9 +48,11 @@ namespace Unidad.Core.DOTS
                 case ActionEffectType.SpawnTimer:
                     break;
 
-                // Future effect types:
-                // case ActionEffectType.AddMemory: MemoryUtility.AddMemory(...); break;
-                // case ActionEffectType.ModifyRelationship: SocialUtility.ModifyTrust(...); break;
+                // Game-specific ActionEffectTypes (100+) are handled by external systems.
+                // The ActionEffectElement buffer persists on the agent until the next action starts,
+                // giving game systems time to process custom effects on ActionCompleted.
+                default:
+                    break;
             }
         }
 

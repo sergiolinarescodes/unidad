@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 
 namespace Unidad.Core.DOTS
@@ -23,15 +24,13 @@ namespace Unidad.Core.DOTS
             int resourceId, float baseDecayRate,
             in DynamicBuffer<NeedDecayModifier> decayMods)
         {
-            var active = new NativeList<ModifierElement>(decayMods.Length, Allocator.Temp);
+            var active = new FixedList128Bytes<ModifierElement>();
             for (int i = 0; i < decayMods.Length; i++)
             {
                 if (decayMods[i].ResourceId == resourceId && decayMods[i].Modifier.IsActive)
                     active.Add(decayMods[i].Modifier);
             }
-            float result = ModifierUtility.EvaluateSorted(ref active, baseDecayRate);
-            active.Dispose();
-            return result;
+            return ModifierUtility.EvaluateSorted(ref active, baseDecayRate);
         }
 
         /// <summary>

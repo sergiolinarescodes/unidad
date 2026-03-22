@@ -47,6 +47,18 @@ namespace Unidad.Core.DOTS
         // Feedback
         bool _hasFeedback;
 
+        // Schedule
+        bool _hasSchedule;
+        int _scheduleId;
+
+        // Memory
+        bool _hasMemory;
+        int _maxMemories;
+        float _memoryDecayRate;
+
+        // Social
+        bool _hasRelationships;
+
         // Needs
         struct NeedDef { public int ResourceId; public float Initial, Max, DecayRate, Critical, Low, High; }
         List<NeedDef> _needs;
@@ -154,6 +166,27 @@ namespace Unidad.Core.DOTS
             return this;
         }
 
+        public AgentBuilder WithSchedule(int scheduleId)
+        {
+            _hasSchedule = true;
+            _scheduleId = scheduleId;
+            return this;
+        }
+
+        public AgentBuilder WithMemory(int maxMemories = 32, float decayRate = 0.01f)
+        {
+            _hasMemory = true;
+            _maxMemories = maxMemories;
+            _memoryDecayRate = decayRate;
+            return this;
+        }
+
+        public AgentBuilder WithRelationships()
+        {
+            _hasRelationships = true;
+            return this;
+        }
+
         public AgentBuilder WithFeedback()
         {
             _hasFeedback = true;
@@ -194,6 +227,7 @@ namespace Unidad.Core.DOTS
             types.Add(ComponentType.ReadWrite<AgentSuspended>());
             types.Add(ComponentType.ReadWrite<AgentDespawning>());
             types.Add(ComponentType.ReadWrite<ActivityChanged>());
+            types.Add(ComponentType.ReadWrite<AgentIsSuspended>());
 
             // Strategy + Scoring (always present on agents)
             types.Add(ComponentType.ReadWrite<ScoringResult>());
@@ -207,6 +241,10 @@ namespace Unidad.Core.DOTS
             types.Add(ComponentType.ReadWrite<ActionInterrupted>());
             types.Add(ComponentType.ReadWrite<ActionQueueConfig>());
             types.Add(ComponentType.ReadWrite<ActionQueueProgress>());
+            types.Add(ComponentType.ReadWrite<QueueAdvanced>());
+            types.Add(ComponentType.ReadWrite<QueueCompleted>());
+            types.Add(ComponentType.ReadWrite<QueueInterrupted>());
+            types.Add(ComponentType.ReadWrite<ForceRescoreTag>());
             types.Add(ComponentType.ReadWrite<StateMachineData>());
             types.Add(ComponentType.ReadWrite<StateEntered>());
             types.Add(ComponentType.ReadWrite<StateExited>());
@@ -281,6 +319,34 @@ namespace Unidad.Core.DOTS
                 types.Add(ComponentType.ReadWrite<StrategyUnderperforming>());
             }
 
+            // Schedule
+            if (_hasSchedule)
+            {
+                types.Add(ComponentType.ReadWrite<ScheduleData>());
+                types.Add(ComponentType.ReadWrite<ScheduleSlotChanged>());
+            }
+
+            // Memory
+            if (_hasMemory)
+            {
+                types.Add(ComponentType.ReadWrite<MemoryConfig>());
+                types.Add(ComponentType.ReadWrite<MemoryElement>());
+                types.Add(ComponentType.ReadWrite<MemoryAdded>());
+                types.Add(ComponentType.ReadWrite<MemoryForgotten>());
+            }
+
+            // Social
+            if (_hasRelationships)
+            {
+                types.Add(ComponentType.ReadWrite<InteractionRequest>());
+                types.Add(ComponentType.ReadWrite<InteractionResponse>());
+                types.Add(ComponentType.ReadWrite<InteractionState>());
+                types.Add(ComponentType.ReadWrite<RelationshipElement>());
+                types.Add(ComponentType.ReadWrite<InteractionStarted>());
+                types.Add(ComponentType.ReadWrite<InteractionCompleted>());
+                types.Add(ComponentType.ReadWrite<InteractionRejected>());
+            }
+
             // Custom
             if (_extraTypes != null)
                 foreach (var t in _extraTypes) types.Add(t);
@@ -295,12 +361,17 @@ namespace Unidad.Core.DOTS
             _em.SetComponentEnabled<AgentSuspended>(entity, false);
             _em.SetComponentEnabled<AgentDespawning>(entity, false);
             _em.SetComponentEnabled<ActivityChanged>(entity, false);
+            _em.SetComponentEnabled<AgentIsSuspended>(entity, false);
             _em.SetComponentEnabled<ActionSelectionChanged>(entity, false);
             _em.SetComponentEnabled<StrategyAssignRequest>(entity, false);
             _em.SetComponentEnabled<StrategyAssigned>(entity, false);
             _em.SetComponentEnabled<ActionStarted>(entity, false);
             _em.SetComponentEnabled<ActionCompleted>(entity, false);
             _em.SetComponentEnabled<ActionInterrupted>(entity, false);
+            _em.SetComponentEnabled<QueueAdvanced>(entity, false);
+            _em.SetComponentEnabled<QueueCompleted>(entity, false);
+            _em.SetComponentEnabled<QueueInterrupted>(entity, false);
+            _em.SetComponentEnabled<ForceRescoreTag>(entity, false);
             _em.SetComponentEnabled<NeedUrgencyChanged>(entity, false);
             _em.SetComponentEnabled<ContextRefreshRequest>(entity, false);
             _em.SetComponentEnabled<ContextRefreshed>(entity, false);
@@ -308,7 +379,6 @@ namespace Unidad.Core.DOTS
             _em.SetComponentEnabled<ResourceDepleted>(entity, false);
             _em.SetComponentEnabled<ResourceFilled>(entity, false);
 
-            // Set component data
             var pos = _hasTransform ? _position : float3.zero;
             var rot = _hasTransform ? _rotation : quaternion.identity;
             var scl = _hasTransform ? _scale : 1f;
@@ -423,6 +493,41 @@ namespace Unidad.Core.DOTS
                 _em.SetComponentEnabled<StrategyUnderperforming>(entity, false);
             }
 
+            // Schedule
+            if (_hasSchedule)
+            {
+                _em.SetComponentData(entity, new ScheduleData
+                {
+                    ScheduleId = _scheduleId,
+                    CurrentSlotIndex = -1
+                });
+                _em.SetComponentEnabled<ScheduleSlotChanged>(entity, false);
+            }
+
+            // Memory
+            if (_hasMemory)
+            {
+                _em.SetComponentData(entity, new MemoryConfig
+                {
+                    MaxMemories = _maxMemories,
+                    DecayRate = _memoryDecayRate,
+                    ImportanceThreshold = 0.05f
+                });
+                _em.SetComponentEnabled<MemoryAdded>(entity, false);
+                _em.SetComponentEnabled<MemoryForgotten>(entity, false);
+            }
+
+            // Social
+            if (_hasRelationships)
+            {
+                _em.SetComponentData(entity, new InteractionState { Phase = InteractionPhase.None });
+                _em.SetComponentEnabled<InteractionRequest>(entity, false);
+                _em.SetComponentEnabled<InteractionResponse>(entity, false);
+                _em.SetComponentEnabled<InteractionStarted>(entity, false);
+                _em.SetComponentEnabled<InteractionCompleted>(entity, false);
+                _em.SetComponentEnabled<InteractionRejected>(entity, false);
+            }
+
             // Strategy assignment request
             if (_strategyId >= 0)
             {
@@ -430,10 +535,8 @@ namespace Unidad.Core.DOTS
                 _em.SetComponentEnabled<StrategyAssignRequest>(entity, true);
             }
 
-            // Fire spawned event
             _em.SetComponentEnabled<AgentSpawned>(entity, true);
 
-            // Custom setters
             if (_extraSetters != null)
                 foreach (var setter in _extraSetters) setter(_em, entity);
 

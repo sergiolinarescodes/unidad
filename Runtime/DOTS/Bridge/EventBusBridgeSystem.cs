@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unidad.Core.EventBus;
 using Unity.Entities;
 
@@ -12,10 +13,25 @@ namespace Unidad.Core.DOTS.Bridge
     public partial class EventBusBridgeSystem : SystemBase
     {
         IEventBus _eventBus;
+        List<System.Action<SystemBase, IEventBus>> _customBridges;
+
+        protected override void OnCreate()
+        {
+            _customBridges = new List<System.Action<SystemBase, IEventBus>>();
+        }
 
         public void SetEventBus(IEventBus eventBus)
         {
             _eventBus = eventBus;
+        }
+
+        /// <summary>
+        /// Register a custom bridge callback. Invoked each frame after built-in bridges.
+        /// Use this to bridge game-specific ECS events to the managed event bus.
+        /// </summary>
+        public void RegisterBridge(System.Action<SystemBase, IEventBus> bridge)
+        {
+            _customBridges.Add(bridge);
         }
 
         protected override void OnUpdate()
@@ -31,6 +47,9 @@ namespace Unidad.Core.DOTS.Bridge
             BridgeInventoryEvents();
             BridgeGridEvents();
             BridgeProgressionEvents();
+
+            for (int i = 0; i < _customBridges.Count; i++)
+                _customBridges[i](this, _eventBus);
         }
 
         void BridgeTimerEvents()

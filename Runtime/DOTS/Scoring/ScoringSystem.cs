@@ -14,6 +14,9 @@ namespace Unidad.Core.DOTS
     [UpdateAfter(typeof(StrategyAssignmentSystem))]
     public partial struct ScoringSystem : ISystem
     {
+        const float ConstantInputDivisor = 100f;
+        const float TimeSinceActionNormSeconds = 60f;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ScoringResult>();
@@ -36,12 +39,35 @@ namespace Unidad.Core.DOTS
                     RefRO<AgentData>,
                     RefRO<AgentTarget>,
                     RefRO<LocalTransform>>()
+                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 if (considerations.Length == 0)
                 {
                     entityIndex++;
                     continue;
+                }
+
+                // Respect AllowRescore — skip agents with active queue plans
+                // unless ForceRescore is enabled
+                if (em.HasComponent<ActionQueueConfig>(entity))
+                {
+                    var queueConfig = em.GetComponentData<ActionQueueConfig>(entity);
+                    if (!queueConfig.AllowRescore)
+                    {
+                        // Check for ForceRescore override
+                        if (em.HasComponent<ForceRescoreTag>(entity) &&
+                            em.IsComponentEnabled<ForceRescoreTag>(entity))
+                        {
+                            // Override — allow this one rescore, then re-disable
+                            ecb.SetComponentEnabled<ForceRescoreTag>(entity, false);
+                        }
+                        else
+                        {
+                            entityIndex++;
+                            continue; // Skip scoring for this agent
+                        }
+                    }
                 }
 
                 // Read secondary buffers via EntityManager
@@ -73,7 +99,8 @@ namespace Unidad.Core.DOTS
                             in needs, in resources, in maxMods, in minMods,
                             in timestamps, in strategyParams, in contextSnapshot,
                             target.ValueRO, agent.ValueRO, transform.ValueRO,
-                            elapsedTime, frameSeed, entityIndex);
+                            elapsedTime, frameSeed, entityIndex,
+                            em, entity);
 
                         float score = ScoringUtility.EvaluateCurve(
                             c.CurveType, input, c.CurveA, c.CurveB, c.CurveC, c.CurveD);
@@ -133,12 +160,13 @@ namespace Unidad.Core.DOTS
             in AgentData agent,
             in LocalTransform transform,
             double elapsedTime,
-            uint frameSeed, int entityIndex)
+            uint frameSeed, int entityIndex,
+            EntityManager em, Entity entity)
         {
             switch (inputType)
             {
                 case ScoringInputType.Constant:
-                    return inputParam / 100f;
+                    return inputParam / ConstantInputDivisor;
 
                 case ScoringInputType.NeedLevel:
                 {
@@ -154,7 +182,7 @@ namespace Unidad.Core.DOTS
                 {
                     int idx = NeedUtility.FindNeed(in needs, inputParam);
                     if (idx < 0) return 0f;
-                    return (float)needs[idx].CurrentUrgency / 3f;
+                    return (float)needs[idx].CurrentUrgency / (float)NeedUrgency.Critical;
                 }
 
                 case ScoringInputType.DistanceToTarget:
@@ -169,7 +197,7 @@ namespace Unidad.Core.DOTS
                     int idx = ScoringUtility.FindTimestamp(in timestamps, inputParam);
                     if (idx < 0) return 1f;
                     float elapsed = (float)(elapsedTime - timestamps[idx].LastCompletedTime);
-                    return math.clamp(elapsed / 60f, 0f, 1f);
+                    return math.clamp(elapsed / TimeSinceActionNormSeconds, 0f, 1f);
                 }
 
                 case ScoringInputType.ResourceLevel:
@@ -196,9 +224,55 @@ namespace Unidad.Core.DOTS
                 }
 
                 case ScoringInputType.NearbyPOICount:
+                {
+                    if (!em.HasBuffer<KnownPOIElement>(entity)) return 0f;
+                    var knownPOIs = em.GetBuffer<KnownPOIElement>(entity);
+                    int count = 0;
+                    for (int k = 0; k < knownPOIs.Length; k++)
+                    {
+                        if (knownPOIs[k].POIType == inputParam)
+                            count++;
+                    }
+                    if (!em.HasComponent<AwarenessData>(entity)) return math.min(count, 1f);
+                    int maxPOIs = em.GetComponentData<AwarenessData>(entity).MaxKnownPOIs;
+                    return maxPOIs > 0 ? math.clamp((float)count / maxPOIs, 0f, 1f) : 0f;
+                }
+
                 case ScoringInputType.AgentState:
+                    if (!em.HasComponent<StateMachineData>(entity)) return 0f;
+                    return em.GetComponentData<StateMachineData>(entity).CurrentState == inputParam ? 1f : 0f;
+
                 case ScoringInputType.WorldTime:
-                    return StrategyUtility.GetParam(in strategyParams, inputParam);
+                    return SharedContextUtility.GetFromSnapshot(in contextSnapshot, inputParam);
+
+                case ScoringInputType.MemoryAge:
+                {
+                    if (!em.HasBuffer<MemoryElement>(entity)) return 1f;
+                    var memories = em.GetBuffer<MemoryElement>(entity);
+                    int idx = MemoryUtility.FindMostRecent(in memories, inputParam);
+                    if (idx < 0) return 1f; // No memory = max urgency
+                    float age = (float)(elapsedTime - memories[idx].Timestamp);
+                    return math.clamp(age / TimeSinceActionNormSeconds, 0f, 1f);
+                }
+
+                case ScoringInputType.MemoryDistance:
+                {
+                    if (!em.HasBuffer<MemoryElement>(entity)) return 1f;
+                    var memories = em.GetBuffer<MemoryElement>(entity);
+                    int idx = MemoryUtility.FindNearest(in memories, inputParam, transform.Position);
+                    if (idx < 0) return 1f;
+                    float dist = math.distance(memories[idx].Location, transform.Position);
+                    float maxRange = math.max(StrategyUtility.GetParam(in strategyParams, inputParam), 50f);
+                    return math.clamp(dist / maxRange, 0f, 1f);
+                }
+
+                case ScoringInputType.MemoryCount:
+                {
+                    if (!em.HasBuffer<MemoryElement>(entity)) return 0f;
+                    var memories = em.GetBuffer<MemoryElement>(entity);
+                    int count = MemoryUtility.CountByType(in memories, inputParam);
+                    return math.clamp(count / 10f, 0f, 1f);
+                }
 
                 default:
                     return 0f;

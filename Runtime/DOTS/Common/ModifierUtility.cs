@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 
 namespace Unidad.Core.DOTS
@@ -36,6 +37,22 @@ namespace Unidad.Core.DOTS
         /// Use this when callers build their own filtered NativeList.
         /// </summary>
         public static float EvaluateSorted(ref NativeList<ModifierElement> active, float baseValue)
+        {
+            SortByPriorityDescending(ref active);
+
+            float result = baseValue;
+            for (int i = 0; i < active.Length; i++)
+            {
+                result = Apply(active[i], result);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Zero-allocation overload using FixedList. Preferred for hot paths
+        /// where modifier count per resource is small (typically 0-8).
+        /// </summary>
+        public static float EvaluateSorted(ref FixedList128Bytes<ModifierElement> active, float baseValue)
         {
             SortByPriorityDescending(ref active);
 
@@ -105,6 +122,21 @@ namespace Unidad.Core.DOTS
 
         // Simple insertion sort — modifier buffers are typically small
         static void SortByPriorityDescending(ref NativeList<ModifierElement> list)
+        {
+            for (int i = 1; i < list.Length; i++)
+            {
+                var key = list[i];
+                int j = i - 1;
+                while (j >= 0 && list[j].Priority < key.Priority)
+                {
+                    list[j + 1] = list[j];
+                    j--;
+                }
+                list[j + 1] = key;
+            }
+        }
+
+        static void SortByPriorityDescending(ref FixedList128Bytes<ModifierElement> list)
         {
             for (int i = 1; i < list.Length; i++)
             {

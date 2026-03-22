@@ -54,13 +54,13 @@ namespace Unidad.Core.DOTS
 
             foreach (var (feedback, entity) in
                 SystemAPI.Query<RefRW<AgentFeedback>>()
+                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 var actionFeedbacks = em.GetBuffer<ActionFeedbackElement>(entity);
                 var completionRecords = em.GetBuffer<ActionCompletionRecord>(entity);
                 var needs = em.GetBuffer<NeedElement>(entity);
 
-                // Process new completion records
                 for (int i = 0; i < completionRecords.Length; i++)
                 {
                     var record = completionRecords[i];
@@ -110,14 +110,13 @@ namespace Unidad.Core.DOTS
                 }
                 completionRecords.Clear();
 
-                // Periodic overall evaluation
                 if (elapsedTime - feedback.ValueRO.LastEvaluationTime >= config.EvaluationInterval)
                 {
                     float totalSatisfaction = 0f;
                     if (needs.Length > 0)
                     {
                         for (int i = 0; i < needs.Length; i++)
-                            totalSatisfaction += 1f - ((float)needs[i].CurrentUrgency / 3f);
+                            totalSatisfaction += 1f - ((float)needs[i].CurrentUrgency / (float)NeedUrgency.Critical);
                         totalSatisfaction /= needs.Length;
                     }
 
@@ -136,7 +135,7 @@ namespace Unidad.Core.DOTS
                         overallPerformance += successRate * (1f - config.NeedSatisfactionWeight);
                     }
 
-                    if (overallPerformance < 0.3f && totalActions > 5)
+                    if (overallPerformance < config.UnderperformingThreshold && totalActions > config.MinActionsForEvaluation)
                         ecb.SetComponentEnabled<StrategyUnderperforming>(entity, true);
                 }
             }

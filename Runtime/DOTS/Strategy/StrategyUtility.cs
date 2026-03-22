@@ -1,5 +1,7 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Unidad.Core.DOTS
 {
@@ -44,8 +46,8 @@ namespace Unidad.Core.DOTS
         /// Find the strategy definition entity by StrategyId from pre-gathered arrays.
         /// </summary>
         public static Entity FindStrategyEntity(
-            in Unity.Collections.NativeArray<Entity> strategyEntities,
-            in Unity.Collections.NativeArray<StrategyDefinition> strategyDatas,
+            in NativeArray<Entity> strategyEntities,
+            in NativeArray<StrategyDefinition> strategyDatas,
             int strategyId)
         {
             for (int i = 0; i < strategyDatas.Length; i++)
@@ -54,6 +56,31 @@ namespace Unidad.Core.DOTS
                     return strategyEntities[i];
             }
             return Entity.Null;
+        }
+
+        /// <summary>
+        /// Build a HashMap for O(1) strategy lookup. Call once per system OnUpdate,
+        /// dispose at end. Preferred over linear FindStrategyEntity for hot paths.
+        /// </summary>
+        public static NativeHashMap<int, Entity> BuildStrategyLookup(
+            in NativeArray<Entity> strategyEntities,
+            in NativeArray<StrategyDefinition> strategyDatas,
+            Allocator allocator)
+        {
+            var map = new NativeHashMap<int, Entity>(
+                math.max(strategyDatas.Length * 2, 4), allocator);
+            for (int i = 0; i < strategyDatas.Length; i++)
+                map.TryAdd(strategyDatas[i].StrategyId, strategyEntities[i]);
+            return map;
+        }
+
+        /// <summary>
+        /// O(1) strategy entity lookup via pre-built HashMap.
+        /// </summary>
+        public static Entity FindStrategyEntity(
+            in NativeHashMap<int, Entity> lookup, int strategyId)
+        {
+            return lookup.TryGetValue(strategyId, out var entity) ? entity : Entity.Null;
         }
     }
 }

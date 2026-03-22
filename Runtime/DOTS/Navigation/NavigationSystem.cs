@@ -315,7 +315,6 @@ namespace Unidad.Core.DOTS
             ecb.Dispose();
             changedNodes.Dispose();
 
-            // Clear graph change records
             var clearEcb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (changes, entity) in
                 SystemAPI.Query<DynamicBuffer<NavGraphChangeRecord>>()

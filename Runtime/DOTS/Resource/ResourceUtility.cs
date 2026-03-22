@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -11,31 +12,27 @@ namespace Unidad.Core.DOTS
         public static float GetEffectiveMax(int resourceId, float baseMax,
             in DynamicBuffer<ResourceMaxModifier> modBuffer)
         {
-            var active = new NativeList<ModifierElement>(modBuffer.Length, Allocator.Temp);
+            var active = new FixedList128Bytes<ModifierElement>();
             for (int i = 0; i < modBuffer.Length; i++)
             {
                 if (modBuffer[i].ResourceId == resourceId && modBuffer[i].Modifier.IsActive)
                     active.Add(modBuffer[i].Modifier);
             }
 
-            float result = ModifierUtility.EvaluateSorted(ref active, baseMax);
-            active.Dispose();
-            return result;
+            return ModifierUtility.EvaluateSorted(ref active, baseMax);
         }
 
         public static float GetEffectiveMin(int resourceId, float baseMin,
             in DynamicBuffer<ResourceMinModifier> modBuffer)
         {
-            var active = new NativeList<ModifierElement>(modBuffer.Length, Allocator.Temp);
+            var active = new FixedList128Bytes<ModifierElement>();
             for (int i = 0; i < modBuffer.Length; i++)
             {
                 if (modBuffer[i].ResourceId == resourceId && modBuffer[i].Modifier.IsActive)
                     active.Add(modBuffer[i].Modifier);
             }
 
-            float result = ModifierUtility.EvaluateSorted(ref active, baseMin);
-            active.Dispose();
-            return result;
+            return ModifierUtility.EvaluateSorted(ref active, baseMin);
         }
 
         public static void Set(

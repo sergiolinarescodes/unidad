@@ -62,8 +62,12 @@ namespace Unidad.Core.DOTS
         SetResource = 1,
         SetNeedUrgency = 2,
         TriggerState = 3,
-        SpawnTimer = 4
-        // Future effect types added here (e.g., AddMemory, ModifyRelationship)
+        SpawnTimer = 4,
+
+        // Game-specific effect types start here. Create a system running after
+        // AgentActionSystem that reads ActionEffectElement on ActionCompleted
+        // and processes custom types. The buffer persists until next action start.
+        Custom = 100
     }
 
     /// <summary>

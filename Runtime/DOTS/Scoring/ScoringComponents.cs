@@ -35,7 +35,10 @@ namespace Unidad.Core.DOTS
         StrategyParam,      // Reads StrategyParamElement with ParamId=InputParam
         SharedContext,      // Reads from broadcast NativeArray by Key=InputParam
         AgentContext,       // Reads from AgentContextSnapshot by Key=InputParam
-        Random              // Random [0..1] per evaluation (seeded by entity+frame)
+        Random,             // Random [0..1] per evaluation (seeded by entity+frame)
+        MemoryAge,          // Time since last memory of type InputParam (normalized to 60s)
+        MemoryDistance,      // Distance to nearest remembered location of type InputParam (normalized to InputParam max range via StrategyParam)
+        MemoryCount          // Count of memories of type InputParam (normalized to 10)
     }
 
     /// <summary>

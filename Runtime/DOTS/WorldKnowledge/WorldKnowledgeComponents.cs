@@ -61,4 +61,22 @@ namespace Unidad.Core.DOTS
 
     /// <summary>1-frame: agent's knowledge was refreshed this frame.</summary>
     public struct KnowledgeRefreshed : IComponentData, IEnableableComponent { }
+
+    /// <summary>
+    /// Singleton configuration for WorldKnowledgeSystem.
+    /// If absent, the system uses defaults (CellSize=10, 3D mode).
+    /// Set Is2D=true for games with ground-plane agents to get ~11x fewer cell lookups.
+    /// </summary>
+    public struct WorldKnowledgeConfig : IComponentData
+    {
+        public float CellSize;
+        [MarshalAs(UnmanagedType.U1)]
+        public bool Is2D;
+
+        public static WorldKnowledgeConfig Default => new WorldKnowledgeConfig
+        {
+            CellSize = 10f,
+            Is2D = false
+        };
+    }
 }

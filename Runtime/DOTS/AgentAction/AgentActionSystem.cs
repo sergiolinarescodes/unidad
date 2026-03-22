@@ -16,7 +16,7 @@ namespace Unidad.Core.DOTS
     /// after CommandQueueSystem and handles entries with those types.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(ActionQueueSystem))]
+    [UpdateAfter(typeof(ScoringSystem))]
     public partial struct AgentActionSystem : ISystem
     {
         EntityQuery _strategyDefQuery;
@@ -46,6 +46,8 @@ namespace Unidad.Core.DOTS
 
             var strategyEntities = _strategyDefQuery.ToEntityArray(Allocator.Temp);
             var strategyDatas = _strategyDefQuery.ToComponentDataArray<StrategyDefinition>(Allocator.Temp);
+            var strategyLookup = StrategyUtility.BuildStrategyLookup(
+                in strategyEntities, in strategyDatas, Allocator.Temp);
 
             foreach (var (scoringResult, actionState, agent, preconditions,
                 effects, entity) in
@@ -55,6 +57,7 @@ namespace Unidad.Core.DOTS
                     RefRO<AgentData>,
                     RefRO<AgentPreconditions>,
                     DynamicBuffer<ActionEffectElement>>()
+                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 // --- Handle action completion from CommandQueue ---
@@ -144,7 +147,7 @@ namespace Unidad.Core.DOTS
                     int newActionId = scoringResult.ValueRO.BestActionId;
 
                     Entity strategyEntity = StrategyUtility.FindStrategyEntity(
-                        in strategyEntities, in strategyDatas, agent.ValueRO.StrategyId);
+                        in strategyLookup, agent.ValueRO.StrategyId);
 
                     if (strategyEntity != Entity.Null)
                     {

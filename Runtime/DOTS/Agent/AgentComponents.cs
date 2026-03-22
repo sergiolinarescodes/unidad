@@ -56,4 +56,11 @@ namespace Unidad.Core.DOTS
     public struct AgentActivated : IComponentData, IEnableableComponent { }
     public struct AgentSuspended : IComponentData, IEnableableComponent { }
     public struct AgentDespawning : IComponentData, IEnableableComponent { }
+
+    /// <summary>
+    /// Persistent suspension marker. Unlike AgentSuspended (1-frame event),
+    /// this stays enabled while the agent is suspended. Hot-path systems filter
+    /// on this via WithNone to skip inactive agents.
+    /// </summary>
+    public struct AgentIsSuspended : IComponentData, IEnableableComponent { }
 }

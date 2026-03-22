@@ -36,7 +36,9 @@ namespace Unidad.Core.DOTS.Tests
                 SatisfactionDecayRate = 0.9f,
                 RewardPerActionComplete = reward,
                 PenaltyPerActionFail = penalty,
-                NeedSatisfactionWeight = 0.6f
+                NeedSatisfactionWeight = 0.6f,
+                UnderperformingThreshold = 0.3f,
+                MinActionsForEvaluation = 5
             });
             return e;
         }

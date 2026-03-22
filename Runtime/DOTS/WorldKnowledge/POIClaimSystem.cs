@@ -25,6 +25,7 @@ namespace Unidad.Core.DOTS
                     RefRW<POIClaim>,
                     RefRO<AgentActionState>,
                     RefRO<AgentData>>()
+                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 if (claim.ValueRO.POIEntity == Entity.Null)
@@ -52,13 +53,13 @@ namespace Unidad.Core.DOTS
                 }
             }
 
-            // Process new claims from agents starting actions with a target POI
             foreach (var (claim, actionState, agentTarget, entity) in
                 SystemAPI.Query<
                     RefRW<POIClaim>,
                     RefRO<AgentActionState>,
                     RefRO<AgentTarget>>()
                     .WithAll<ActionStarted>()
+                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 // Only claim if action is starting and target is a valid entity

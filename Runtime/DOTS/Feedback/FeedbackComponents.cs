@@ -33,6 +33,8 @@ namespace Unidad.Core.DOTS
         public float RewardPerActionComplete;
         public float PenaltyPerActionFail;
         public float NeedSatisfactionWeight;
+        public float UnderperformingThreshold;
+        public int MinActionsForEvaluation;
 
         public static FeedbackConfig Default => new FeedbackConfig
         {
@@ -40,7 +42,9 @@ namespace Unidad.Core.DOTS
             SatisfactionDecayRate = 0.9f,
             RewardPerActionComplete = 1f,
             PenaltyPerActionFail = -0.5f,
-            NeedSatisfactionWeight = 0.6f
+            NeedSatisfactionWeight = 0.6f,
+            UnderperformingThreshold = 0.3f,
+            MinActionsForEvaluation = 5
         };
     }
 

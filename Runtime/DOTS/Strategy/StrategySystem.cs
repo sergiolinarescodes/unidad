@@ -31,6 +31,8 @@ namespace Unidad.Core.DOTS
 
             var strategyEntities = _strategyDefQuery.ToEntityArray(Allocator.Temp);
             var strategyDatas = _strategyDefQuery.ToComponentDataArray<StrategyDefinition>(Allocator.Temp);
+            var strategyLookup = StrategyUtility.BuildStrategyLookup(
+                in strategyEntities, in strategyDatas, Allocator.Temp);
             var em = state.EntityManager;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
@@ -46,7 +48,7 @@ namespace Unidad.Core.DOTS
             {
                 int strategyId = request.ValueRO.StrategyId;
                 Entity strategyEntity = StrategyUtility.FindStrategyEntity(
-                    in strategyEntities, in strategyDatas, strategyId);
+                    in strategyLookup, strategyId);
 
                 if (strategyEntity == Entity.Null)
                 {
