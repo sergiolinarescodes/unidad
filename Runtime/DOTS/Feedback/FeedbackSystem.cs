@@ -54,7 +54,6 @@ namespace Unidad.Core.DOTS
 
             foreach (var (feedback, entity) in
                 SystemAPI.Query<RefRW<AgentFeedback>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 var actionFeedbacks = em.GetBuffer<ActionFeedbackElement>(entity);

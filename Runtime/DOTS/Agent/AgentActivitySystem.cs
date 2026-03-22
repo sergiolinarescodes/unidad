@@ -30,7 +30,6 @@ namespace Unidad.Core.DOTS
                 SystemAPI.Query<
                     RefRW<AgentActivity>,
                     RefRO<AgentActionState>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 var prev = activity.ValueRO.CurrentActivity;

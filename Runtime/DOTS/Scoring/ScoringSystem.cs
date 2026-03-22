@@ -39,7 +39,6 @@ namespace Unidad.Core.DOTS
                     RefRO<AgentData>,
                     RefRO<AgentTarget>,
                     RefRO<LocalTransform>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 if (considerations.Length == 0)

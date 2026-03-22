@@ -80,7 +80,6 @@ namespace Unidad.Core.DOTS
                     RefRO<LocalTransform>,
                     DynamicBuffer<KnownPOIElement>,
                     DynamicBuffer<KnownAgentElement>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 float3 agentPos = transform.ValueRO.Position;

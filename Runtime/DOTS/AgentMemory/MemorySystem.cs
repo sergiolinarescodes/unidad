@@ -54,7 +54,6 @@ namespace Unidad.Core.DOTS
 
             foreach (var (config, entity) in
                 SystemAPI.Query<RefRO<MemoryConfig>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 var memories = em.GetBuffer<MemoryElement>(entity);

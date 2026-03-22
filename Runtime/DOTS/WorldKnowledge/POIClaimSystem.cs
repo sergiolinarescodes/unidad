@@ -25,7 +25,7 @@ namespace Unidad.Core.DOTS
                     RefRW<POIClaim>,
                     RefRO<AgentActionState>,
                     RefRO<AgentData>>()
-                    .WithNone<AgentIsSuspended>()
+
                     .WithEntityAccess())
             {
                 if (claim.ValueRO.POIEntity == Entity.Null)
@@ -59,7 +59,7 @@ namespace Unidad.Core.DOTS
                     RefRO<AgentActionState>,
                     RefRO<AgentTarget>>()
                     .WithAll<ActionStarted>()
-                    .WithNone<AgentIsSuspended>()
+
                     .WithEntityAccess())
             {
                 // Only claim if action is starting and target is a valid entity

@@ -90,7 +90,6 @@ namespace Unidad.Core.DOTS
                     RefRW<AgentActionState>,
                     RefRO<ScoringResult>,
                     RefRO<AgentData>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 var mode = config.ValueRO.Mode;

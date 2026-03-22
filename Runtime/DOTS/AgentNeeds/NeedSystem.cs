@@ -60,7 +60,6 @@ namespace Unidad.Core.DOTS
             foreach (var (decayMods, entity) in
                 SystemAPI.Query<DynamicBuffer<NeedDecayModifier>>()
                     .WithAll<NeedElement, ResourceElement>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 var needs = em.GetBuffer<NeedElement>(entity);

@@ -71,7 +71,6 @@ namespace Unidad.Core.DOTS
 
             foreach (var (schedData, entity) in
                 SystemAPI.Query<RefRW<ScheduleData>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 // Find schedule definition entity

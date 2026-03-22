@@ -33,6 +33,7 @@ namespace Unidad.Core.DOTS
         bool _hasNavigation;
         int _graphId;
         float _moveSpeed, _stoppingDistance;
+        int _startingNodeId;
 
         // Awareness
         bool _hasAwareness;
@@ -128,12 +129,14 @@ namespace Unidad.Core.DOTS
             return this;
         }
 
-        public AgentBuilder WithNavigation(int graphId, float moveSpeed = 3f, float stoppingDistance = 0.5f)
+        public AgentBuilder WithNavigation(int graphId, float moveSpeed = 3f, float stoppingDistance = 0.5f,
+            int startingNodeId = -1)
         {
             _hasNavigation = true;
             _graphId = graphId;
             _moveSpeed = moveSpeed;
             _stoppingDistance = stoppingDistance;
+            _startingNodeId = startingNodeId;
             return this;
         }
 
@@ -227,7 +230,6 @@ namespace Unidad.Core.DOTS
             types.Add(ComponentType.ReadWrite<AgentSuspended>());
             types.Add(ComponentType.ReadWrite<AgentDespawning>());
             types.Add(ComponentType.ReadWrite<ActivityChanged>());
-            types.Add(ComponentType.ReadWrite<AgentIsSuspended>());
 
             // Strategy + Scoring (always present on agents)
             types.Add(ComponentType.ReadWrite<ScoringResult>());
@@ -245,6 +247,11 @@ namespace Unidad.Core.DOTS
             types.Add(ComponentType.ReadWrite<QueueCompleted>());
             types.Add(ComponentType.ReadWrite<QueueInterrupted>());
             types.Add(ComponentType.ReadWrite<ForceRescoreTag>());
+            types.Add(ComponentType.ReadWrite<CommandQueueData>());
+            types.Add(ComponentType.ReadWrite<CommandEntry>());
+            types.Add(ComponentType.ReadWrite<CommandCompleted>());
+            types.Add(ComponentType.ReadWrite<CommandFailed>());
+            types.Add(ComponentType.ReadWrite<QueueEmpty>());
             types.Add(ComponentType.ReadWrite<StateMachineData>());
             types.Add(ComponentType.ReadWrite<StateEntered>());
             types.Add(ComponentType.ReadWrite<StateExited>());
@@ -361,7 +368,7 @@ namespace Unidad.Core.DOTS
             _em.SetComponentEnabled<AgentSuspended>(entity, false);
             _em.SetComponentEnabled<AgentDespawning>(entity, false);
             _em.SetComponentEnabled<ActivityChanged>(entity, false);
-            _em.SetComponentEnabled<AgentIsSuspended>(entity, false);
+
             _em.SetComponentEnabled<ActionSelectionChanged>(entity, false);
             _em.SetComponentEnabled<StrategyAssignRequest>(entity, false);
             _em.SetComponentEnabled<StrategyAssigned>(entity, false);
@@ -372,6 +379,9 @@ namespace Unidad.Core.DOTS
             _em.SetComponentEnabled<QueueCompleted>(entity, false);
             _em.SetComponentEnabled<QueueInterrupted>(entity, false);
             _em.SetComponentEnabled<ForceRescoreTag>(entity, false);
+            _em.SetComponentEnabled<CommandCompleted>(entity, false);
+            _em.SetComponentEnabled<CommandFailed>(entity, false);
+            _em.SetComponentEnabled<QueueEmpty>(entity, false);
             _em.SetComponentEnabled<NeedUrgencyChanged>(entity, false);
             _em.SetComponentEnabled<ContextRefreshRequest>(entity, false);
             _em.SetComponentEnabled<ContextRefreshed>(entity, false);
@@ -432,7 +442,7 @@ namespace Unidad.Core.DOTS
                 _em.SetComponentData(entity, new NavAgent
                 {
                     GraphId = _graphId,
-                    CurrentNodeId = -1,
+                    CurrentNodeId = _startingNodeId,
                     Status = NavAgentStatus.Idle
                 });
                 _em.SetComponentEnabled<PathRequest>(entity, false);

@@ -17,6 +17,7 @@ namespace Unidad.Core.DOTS
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ScoringSystem))]
+    [UpdateAfter(typeof(CommandQueueSystem))]
     public partial struct AgentActionSystem : ISystem
     {
         EntityQuery _strategyDefQuery;
@@ -57,7 +58,6 @@ namespace Unidad.Core.DOTS
                     RefRO<AgentData>,
                     RefRO<AgentPreconditions>,
                     DynamicBuffer<ActionEffectElement>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 // --- Handle action completion from CommandQueue ---
@@ -101,28 +101,58 @@ namespace Unidad.Core.DOTS
                     actionState.ValueRW.Phase = AgentActionPhase.None;
                     actionState.ValueRW.CurrentActionId = -1;
                     ecb.SetComponentEnabled<ActionCompleted>(entity, true);
+
+                    // Restore rescoring now that action is done
+                    if (em.HasComponent<ActionQueueConfig>(entity))
+                    {
+                        var cfg = em.GetComponentData<ActionQueueConfig>(entity);
+                        cfg.AllowRescore = true;
+                        em.SetComponentData(entity, cfg);
+                    }
                     continue;
                 }
 
                 // --- Handle navigation completion ---
-                if (actionState.ValueRO.Phase == AgentActionPhase.Navigating &&
-                    em.HasComponent<PathCompleted>(entity) &&
-                    em.IsComponentEnabled<PathCompleted>(entity))
+                // Check both PathCompleted (1-frame event) and NavAgentStatus.Arrived (persistent).
+                // PathCompleted may be cleared by NavEventClearSystem before this system runs.
+                bool navArrived = false;
+                if (actionState.ValueRO.Phase == AgentActionPhase.Navigating)
+                {
+                    if (em.HasComponent<PathCompleted>(entity) &&
+                        em.IsComponentEnabled<PathCompleted>(entity))
+                        navArrived = true;
+                    else if (em.HasComponent<NavAgent>(entity) &&
+                        em.GetComponentData<NavAgent>(entity).Status == NavAgentStatus.Arrived)
+                        navArrived = true;
+                }
+                if (navArrived)
                 {
                     actionState.ValueRW.Phase = AgentActionPhase.Executing;
 
-                    if (em.HasBuffer<CommandEntry>(entity))
+                    // Use mapped duration when ActionBridgeConfig exists, otherwise 3s fallback
+                    float waitDuration = 3f;
+                    if (SystemAPI.HasSingleton<ActionBridgeConfig>())
                     {
-                        var commandQueue = em.GetBuffer<CommandEntry>(entity);
-                        commandQueue.Add(new CommandEntry
+                        var mappingEntity = SystemAPI.GetSingletonEntity<ActionBridgeConfig>();
+                        if (em.HasBuffer<ActionTargetMappingElement>(mappingEntity))
                         {
-                            Type = (CommandType)actionState.ValueRO.CurrentActionType,
-                            Status = CommandStatus.Pending,
-                            Duration = 0f,
-                            Elapsed = 0f,
-                            IntParam = actionState.ValueRO.CurrentActionId
-                        });
+                            var mappings = em.GetBuffer<ActionTargetMappingElement>(mappingEntity);
+                            int mapIdx = ActionBridgeUtility.FindMapping(
+                                in mappings, actionState.ValueRO.CurrentActionType);
+                            if (mapIdx >= 0)
+                                waitDuration = mappings[mapIdx].ExecutionDuration;
+                            else
+                                waitDuration = SystemAPI.GetSingleton<ActionBridgeConfig>().DefaultInPlaceDuration;
+                        }
                     }
+
+                    ActionBridgeUtility.EnqueueWaitCommand(em, entity, waitDuration);
+
+                    // Claim POI at arrival
+                    if (em.HasComponent<AgentTarget>(entity))
+                        ActionBridgeUtility.ClaimPOI(em, entity,
+                            em.GetComponentData<AgentTarget>(entity).TargetEntity);
+
                     continue;
                 }
 
@@ -142,6 +172,14 @@ namespace Unidad.Core.DOTS
                             WasSuccessful = false
                         });
                         ecb.SetComponentEnabled<ActionInterrupted>(entity, true);
+
+                        // Restore rescoring for the new action selection
+                        if (em.HasComponent<ActionQueueConfig>(entity))
+                        {
+                            var cfg = em.GetComponentData<ActionQueueConfig>(entity);
+                            cfg.AllowRescore = true;
+                            em.SetComponentData(entity, cfg);
+                        }
                     }
 
                     int newActionId = scoringResult.ValueRO.BestActionId;

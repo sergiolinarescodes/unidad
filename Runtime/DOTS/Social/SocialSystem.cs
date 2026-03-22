@@ -55,7 +55,6 @@ namespace Unidad.Core.DOTS
                     RefRW<InteractionState>,
                     RefRO<AgentData>>()
                     .WithAll<InteractionRequest>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 Entity target = request.ValueRO.TargetAgent;
@@ -120,7 +119,6 @@ namespace Unidad.Core.DOTS
                 SystemAPI.Query<
                     RefRW<InteractionState>,
                     RefRO<AgentData>>()
-                    .WithNone<AgentIsSuspended>()
                     .WithEntityAccess())
             {
                 if (iState.ValueRO.Phase != InteractionPhase.Active)
