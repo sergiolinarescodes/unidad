@@ -123,7 +123,9 @@ namespace Unidad.Core.DOTS.Tests
 
             var resources = Manager.GetBuffer<ResourceElement>(e);
             Assert.AreEqual(70f, resources[0].CurrentValue, 0.001f);
-            Assert.AreEqual(ProgressionNodeStatus.Unlocked, nodes[0].Status);
+            // Re-get buffer after system ran (ECB.Playback invalidates old handles)
+            var nodesAfter = Manager.GetBuffer<ProgressionNodeElement>(e);
+            Assert.AreEqual(ProgressionNodeStatus.Unlocked, nodesAfter[0].Status);
         }
 
         [Test]
@@ -225,7 +227,9 @@ namespace Unidad.Core.DOTS.Tests
             UpdateGroup(_group);
 
             nodes = Manager.GetBuffer<ProgressionNodeElement>(e);
-            Assert.AreEqual(ProgressionNodeStatus.Locked, nodes[0].Status); // A locked
+            // A (root, no prerequisites) → relocked to Locked, then ScanForNewlyAvailable
+            // promotes it back to Available since it has no unmet prerequisites
+            Assert.AreEqual(ProgressionNodeStatus.Available, nodes[0].Status); // A re-available
             Assert.AreEqual(ProgressionNodeStatus.Locked, nodes[1].Status); // B cascade locked
             Assert.IsTrue(IsEnabled<NodeRelocked>(e));
         }

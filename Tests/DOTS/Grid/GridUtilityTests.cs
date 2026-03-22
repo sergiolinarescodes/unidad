@@ -128,7 +128,8 @@ namespace Unidad.Core.DOTS.Tests
         [Test]
         public void ManhattanDistance_DifferentPoints()
         {
-            Assert.AreEqual(5, GridUtility.ManhattanDistance(new int2(1, 2), new int2(3, 6)));
+            // |1-3| + |2-6| = 2 + 4 = 6
+            Assert.AreEqual(6, GridUtility.ManhattanDistance(new int2(1, 2), new int2(3, 6)));
         }
 
         // --- Cardinal Neighbors ---

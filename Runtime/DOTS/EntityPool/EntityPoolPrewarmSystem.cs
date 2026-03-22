@@ -6,7 +6,6 @@ namespace Unidad.Core.DOTS
 {
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
-    [UpdateBefore(typeof(EntityPoolSystem))]
     public partial struct EntityPoolPrewarmSystem : ISystem
     {
         [BurstCompile]

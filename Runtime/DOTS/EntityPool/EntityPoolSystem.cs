@@ -1,17 +1,14 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
 namespace Unidad.Core.DOTS
 {
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct EntityPoolSystem : ISystem
     {
         EntityQuery _prototypeQuery;
         EntityQuery _availableQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _prototypeQuery = new EntityQueryBuilder(Allocator.Temp)
@@ -24,12 +21,23 @@ namespace Unidad.Core.DOTS
                 .Build(ref state);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            state.EntityManager.CompleteAllTrackedJobs();
+
+            var em = state.EntityManager;
+
             // === Phase 1: Clear previous frame's 1-frame events ===
-            new ClearEventsJob().ScheduleParallel();
-            state.Dependency.Complete();
+            var clearEcb = new EntityCommandBuffer(Allocator.Temp);
+            foreach (var (_, entity) in
+                SystemAPI.Query<RefRO<Pooled>>()
+                    .WithEntityAccess())
+            {
+                clearEcb.SetComponentEnabled<PoolAcquired>(entity, false);
+                clearEcb.SetComponentEnabled<PoolReturned>(entity, false);
+            }
+            clearEcb.Playback(state.EntityManager);
+            clearEcb.Dispose();
 
             // === Phase 2: Process returns ===
             var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -85,7 +93,7 @@ namespace Unidad.Core.DOTS
                     acquireEcb.RemoveComponent<Disabled>(acquired);
                     acquireEcb.SetComponentEnabled<PoolActive>(acquired, true);
                     acquireEcb.SetComponentEnabled<PoolAcquired>(acquired, true);
-                    // Clear stale PoolReturned (ClearEventsJob skips Disabled entities)
+                    // Clear stale PoolReturned (ClearEvents skips Disabled entities)
                     acquireEcb.SetComponentEnabled<PoolReturned>(acquired, false);
                 }
                 else
@@ -132,18 +140,6 @@ namespace Unidad.Core.DOTS
                     return prototypeEntities[i];
             }
             return Entity.Null;
-        }
-
-        [BurstCompile]
-        partial struct ClearEventsJob : IJobEntity
-        {
-            void Execute(
-                EnabledRefRW<PoolAcquired> acquired,
-                EnabledRefRW<PoolReturned> returned)
-            {
-                acquired.ValueRW = false;
-                returned.ValueRW = false;
-            }
         }
     }
 }

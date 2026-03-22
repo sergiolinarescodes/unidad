@@ -1,84 +1,79 @@
-using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace Unidad.Core.DOTS
 {
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct ResourceEventClearSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ResourceElement>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            new ClearEventsJob().ScheduleParallel();
-        }
+            state.EntityManager.CompleteAllTrackedJobs();
 
-        [BurstCompile]
-        partial struct ClearEventsJob : IJobEntity
-        {
-            void Execute(
-                ref DynamicBuffer<ResourceChangeRecord> changes,
-                EnabledRefRW<ResourceChanged> changed,
-                EnabledRefRW<ResourceDepleted> depleted,
-                EnabledRefRW<ResourceFilled> filled)
+            var em = state.EntityManager;
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            foreach (var (_, entity) in
+                SystemAPI.Query<DynamicBuffer<ResourceElement>>()
+                    .WithEntityAccess())
             {
+                var changes = em.GetBuffer<ResourceChangeRecord>(entity);
                 changes.Clear();
-                changed.ValueRW = false;
-                depleted.ValueRW = false;
-                filled.ValueRW = false;
+                ecb.SetComponentEnabled<ResourceChanged>(entity, false);
+                ecb.SetComponentEnabled<ResourceDepleted>(entity, false);
+                ecb.SetComponentEnabled<ResourceFilled>(entity, false);
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
 
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
     public partial struct ResourceEventSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ResourceElement>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            new ProcessEventsJob().ScheduleParallel();
-        }
+            state.EntityManager.CompleteAllTrackedJobs();
 
-        [BurstCompile]
-        partial struct ProcessEventsJob : IJobEntity
-        {
-            void Execute(
-                in DynamicBuffer<ResourceChangeRecord> changes,
-                EnabledRefRW<ResourceChanged> changed,
-                EnabledRefRW<ResourceDepleted> depleted,
-                EnabledRefRW<ResourceFilled> filled)
+            var em = state.EntityManager;
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            foreach (var (_, entity) in
+                SystemAPI.Query<DynamicBuffer<ResourceElement>>()
+                    .WithEntityAccess())
             {
-                if (changes.Length == 0)
-                    return;
+                var changes = em.GetBuffer<ResourceChangeRecord>(entity);
 
-                changed.ValueRW = true;
+                if (changes.Length == 0)
+                    continue;
+
+                ecb.SetComponentEnabled<ResourceChanged>(entity, true);
 
                 for (int i = 0; i < changes.Length; i++)
                 {
                     var record = changes[i];
 
-                    // Fire depleted only on downward threshold crossing
                     if (record.NewValue <= record.EffectiveMin && record.OldValue > record.EffectiveMin)
-                        depleted.ValueRW = true;
+                        ecb.SetComponentEnabled<ResourceDepleted>(entity, true);
 
-                    // Fire filled only on upward threshold crossing
                     if (record.NewValue >= record.EffectiveMax && record.OldValue < record.EffectiveMax)
-                        filled.ValueRW = true;
+                        ecb.SetComponentEnabled<ResourceFilled>(entity, true);
                 }
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
 }

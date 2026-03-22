@@ -1,4 +1,4 @@
-using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace Unidad.Core.DOTS
@@ -8,24 +8,32 @@ namespace Unidad.Core.DOTS
     /// Enables 1-frame event tags (NodeUnlocked, NodeBecameAvailable, NodeRelocked, TreeReset)
     /// for downstream systems and the bridge.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ProgressionSystem : ISystem
     {
         public void OnUpdate(ref SystemState state)
         {
+            state.EntityManager.CompleteAllTrackedJobs();
+
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
             // Clear previous frame's event tags
             foreach (var (_, entity) in
                 SystemAPI.Query<RefRO<ProgressionTreeData>>()
                     .WithEntityAccess())
             {
-                SystemAPI.SetComponentEnabled<NodeUnlocked>(entity, false);
-                SystemAPI.SetComponentEnabled<NodeBecameAvailable>(entity, false);
-                SystemAPI.SetComponentEnabled<NodeRelocked>(entity, false);
-                SystemAPI.SetComponentEnabled<TreeReset>(entity, false);
+                ecb.SetComponentEnabled<NodeUnlocked>(entity, false);
+                ecb.SetComponentEnabled<NodeBecameAvailable>(entity, false);
+                ecb.SetComponentEnabled<NodeRelocked>(entity, false);
+                ecb.SetComponentEnabled<TreeReset>(entity, false);
             }
 
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+
             // Process unlock requests
+            var unlockEcb = new EntityCommandBuffer(Allocator.Temp);
+
             foreach (var (request, nodes, prereqs, costs, changes, entity) in
                 SystemAPI.Query<
                     RefRO<UnlockRequest>,
@@ -49,7 +57,6 @@ namespace Unidad.Core.DOTS
                 }
                 else
                 {
-                    // Check resource costs if entity has resources
                     bool canAfford = true;
                     if (SystemAPI.HasBuffer<ResourceElement>(entity))
                     {
@@ -83,11 +90,16 @@ namespace Unidad.Core.DOTS
                     }
                 }
 
-                ApplyEventTags(ref state, entity, in changesBuf);
-                SystemAPI.SetComponentEnabled<UnlockRequest>(entity, false);
+                ApplyEventTags(ref unlockEcb, entity, in changesBuf);
+                unlockEcb.SetComponentEnabled<UnlockRequest>(entity, false);
             }
 
+            unlockEcb.Playback(state.EntityManager);
+            unlockEcb.Dispose();
+
             // Process relock requests
+            var relockEcb = new EntityCommandBuffer(Allocator.Temp);
+
             foreach (var (request, nodes, prereqs, changes, entity) in
                 SystemAPI.Query<
                     RefRO<RelockRequest>,
@@ -101,11 +113,16 @@ namespace Unidad.Core.DOTS
                 var changesBuf = changes;
                 changesBuf.Clear();
                 ProgressionUtility.Relock(ref nodesBuf, in prereqs, ref changesBuf, request.ValueRO.NodeId);
-                ApplyEventTags(ref state, entity, in changesBuf);
-                SystemAPI.SetComponentEnabled<RelockRequest>(entity, false);
+                ApplyEventTags(ref relockEcb, entity, in changesBuf);
+                relockEcb.SetComponentEnabled<RelockRequest>(entity, false);
             }
 
+            relockEcb.Playback(state.EntityManager);
+            relockEcb.Dispose();
+
             // Process reset requests
+            var resetEcb = new EntityCommandBuffer(Allocator.Temp);
+
             foreach (var (nodes, prereqs, changes, entity) in
                 SystemAPI.Query<
                     DynamicBuffer<ProgressionNodeElement>,
@@ -118,15 +135,17 @@ namespace Unidad.Core.DOTS
                 var changesBuf = changes;
                 changesBuf.Clear();
                 ProgressionUtility.ResetTree(ref nodesBuf, in prereqs, ref changesBuf);
-                SystemAPI.SetComponentEnabled<TreeReset>(entity, true);
+                resetEcb.SetComponentEnabled<TreeReset>(entity, true);
 
-                // Also set individual event tags for any status changes
-                ApplyEventTags(ref state, entity, in changesBuf);
-                SystemAPI.SetComponentEnabled<ResetTreeRequest>(entity, false);
+                ApplyEventTags(ref resetEcb, entity, in changesBuf);
+                resetEcb.SetComponentEnabled<ResetTreeRequest>(entity, false);
             }
+
+            resetEcb.Playback(state.EntityManager);
+            resetEcb.Dispose();
         }
 
-        static void ApplyEventTags(ref SystemState state, Entity entity,
+        static void ApplyEventTags(ref EntityCommandBuffer ecb, Entity entity,
             in DynamicBuffer<ProgressionChangeRecord> changes)
         {
             for (int i = 0; i < changes.Length; i++)
@@ -135,13 +154,13 @@ namespace Unidad.Core.DOTS
                 switch (record.NewStatus)
                 {
                     case ProgressionNodeStatus.Unlocked:
-                        state.EntityManager.SetComponentEnabled<NodeUnlocked>(entity, true);
+                        ecb.SetComponentEnabled<NodeUnlocked>(entity, true);
                         break;
                     case ProgressionNodeStatus.Available:
-                        state.EntityManager.SetComponentEnabled<NodeBecameAvailable>(entity, true);
+                        ecb.SetComponentEnabled<NodeBecameAvailable>(entity, true);
                         break;
                     case ProgressionNodeStatus.Locked:
-                        state.EntityManager.SetComponentEnabled<NodeRelocked>(entity, true);
+                        ecb.SetComponentEnabled<NodeRelocked>(entity, true);
                         break;
                 }
             }

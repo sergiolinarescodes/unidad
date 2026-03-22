@@ -1,46 +1,44 @@
-using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace Unidad.Core.DOTS
 {
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
     public partial struct StateMachineSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<StateMachineData>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            new ClearAndTransitionJob().ScheduleParallel();
-        }
+            state.EntityManager.CompleteAllTrackedJobs();
 
-        [BurstCompile]
-        partial struct ClearAndTransitionJob : IJobEntity
-        {
-            void Execute(
-                ref StateMachineData sm,
-                EnabledRefRW<StateEntered> entered,
-                EnabledRefRW<StateExited> exited)
+            // Use ECB to defer enableable flag changes (avoids invalidating query iterator)
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            foreach (var (sm, entity) in
+                SystemAPI.Query<RefRW<StateMachineData>>()
+                    .WithEntityAccess())
             {
                 // Clear previous frame's flags
-                entered.ValueRW = false;
-                exited.ValueRW = false;
+                ecb.SetComponentEnabled<StateEntered>(entity, false);
+                ecb.SetComponentEnabled<StateExited>(entity, false);
 
-                if (!sm.TransitionRequested)
-                    return;
+                if (!sm.ValueRO.TransitionRequested)
+                    continue;
 
-                sm.TransitionRequested = false;
-                sm.PreviousState = sm.CurrentState;
-                sm.CurrentState = sm.RequestedState;
+                sm.ValueRW.TransitionRequested = false;
+                sm.ValueRW.PreviousState = sm.ValueRO.CurrentState;
+                sm.ValueRW.CurrentState = sm.ValueRO.RequestedState;
 
-                exited.ValueRW = true;
-                entered.ValueRW = true;
+                ecb.SetComponentEnabled<StateExited>(entity, true);
+                ecb.SetComponentEnabled<StateEntered>(entity, true);
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
 }

@@ -1,52 +1,45 @@
-using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace Unidad.Core.DOTS
 {
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct CommandQueueSystem : ISystem
     {
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<CommandQueueData>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            state.EntityManager.CompleteAllTrackedJobs();
+
             float dt = SystemAPI.Time.DeltaTime;
-            new ClearAndProcessJob { DeltaTime = dt }.ScheduleParallel();
-        }
+            var em = state.EntityManager;
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
-        [BurstCompile]
-        partial struct ClearAndProcessJob : IJobEntity
-        {
-            public float DeltaTime;
-
-            void Execute(
-                ref CommandQueueData queue,
-                ref DynamicBuffer<CommandEntry> commands,
-                EnabledRefRW<CommandCompleted> completed,
-                EnabledRefRW<CommandFailed> failed,
-                EnabledRefRW<QueueEmpty> empty)
+            foreach (var (queue, entity) in
+                SystemAPI.Query<RefRW<CommandQueueData>>()
+                    .WithAll<CommandEntry>()
+                    .WithEntityAccess())
             {
-                // Clear previous frame's flags
-                completed.ValueRW = false;
-                failed.ValueRW = false;
-                empty.ValueRW = false;
+                ecb.SetComponentEnabled<CommandCompleted>(entity, false);
+                ecb.SetComponentEnabled<CommandFailed>(entity, false);
+                ecb.SetComponentEnabled<QueueEmpty>(entity, false);
 
-                if (queue.IsPaused)
-                    return;
+                if (queue.ValueRO.IsPaused)
+                    continue;
 
-                if (queue.CurrentIndex >= commands.Length)
+                var commands = em.GetBuffer<CommandEntry>(entity);
+
+                if (queue.ValueRO.CurrentIndex >= commands.Length)
                 {
-                    empty.ValueRW = true;
-                    return;
+                    ecb.SetComponentEnabled<QueueEmpty>(entity, true);
+                    continue;
                 }
 
-                var cmd = commands[queue.CurrentIndex];
+                var cmd = commands[queue.ValueRO.CurrentIndex];
 
                 if (cmd.Status == CommandStatus.Pending)
                     cmd.Status = CommandStatus.Running;
@@ -60,32 +53,35 @@ namespace Unidad.Core.DOTS
                             break;
 
                         case CommandType.Wait:
-                            cmd.Elapsed += DeltaTime;
+                            cmd.Elapsed += dt;
                             if (cmd.Elapsed >= cmd.Duration)
                                 cmd.Status = CommandStatus.Completed;
                             break;
                     }
                 }
 
-                commands[queue.CurrentIndex] = cmd;
+                commands[queue.ValueRO.CurrentIndex] = cmd;
 
                 if (cmd.Status == CommandStatus.Completed)
                 {
-                    completed.ValueRW = true;
-                    queue.CurrentIndex++;
+                    ecb.SetComponentEnabled<CommandCompleted>(entity, true);
+                    queue.ValueRW.CurrentIndex++;
 
-                    if (queue.CurrentIndex >= commands.Length)
-                        empty.ValueRW = true;
+                    if (queue.ValueRO.CurrentIndex >= commands.Length)
+                        ecb.SetComponentEnabled<QueueEmpty>(entity, true);
                 }
                 else if (cmd.Status == CommandStatus.Failed)
                 {
-                    failed.ValueRW = true;
-                    queue.CurrentIndex++;
+                    ecb.SetComponentEnabled<CommandFailed>(entity, true);
+                    queue.ValueRW.CurrentIndex++;
 
-                    if (queue.CurrentIndex >= commands.Length)
-                        empty.ValueRW = true;
+                    if (queue.ValueRO.CurrentIndex >= commands.Length)
+                        ecb.SetComponentEnabled<QueueEmpty>(entity, true);
                 }
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
 }
