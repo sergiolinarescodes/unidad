@@ -67,7 +67,6 @@ namespace Unidad.Core.DOTS.Tests
         const int CtxWoodSupply = 1;
 
         const int MemoryFoundFood = 1;
-        const int MemoryFoundWood = 2;
 
         const int NavGraph = 0;
         const int NodeVillage = 0;
@@ -84,10 +83,8 @@ namespace Unidad.Core.DOTS.Tests
         const int ItemWood = 2;
 
         // Entities
-        Entity _worldTime, _broadcastConfig, _feedbackConfig, _pathConfig;
-        Entity _globalContext, _navGraph;
-        Entity _workStrategy, _restStrategy, _schedule;
-        Entity _farmPOI, _forestPOI, _wellPOI;
+        Entity _worldTime;
+        Entity _globalContext;
         Entity _market;
         Entity _farmer, _gatherer;
 
@@ -160,11 +157,11 @@ namespace Unidad.Core.DOTS.Tests
                 TimeScale = 1f
             });
 
-            _broadcastConfig = CreateEntity(ComponentType.ReadWrite<SharedContextBroadcastConfig>());
-            em.SetComponentData(_broadcastConfig, new SharedContextBroadcastConfig { MaxKeys = 32 });
+            var broadcastCfg = CreateEntity(ComponentType.ReadWrite<SharedContextBroadcastConfig>());
+            em.SetComponentData(broadcastCfg, new SharedContextBroadcastConfig { MaxKeys = 32 });
 
-            _feedbackConfig = CreateEntity(ComponentType.ReadWrite<FeedbackConfig>());
-            em.SetComponentData(_feedbackConfig, new FeedbackConfig
+            var feedbackCfg = CreateEntity(ComponentType.ReadWrite<FeedbackConfig>());
+            em.SetComponentData(feedbackCfg, new FeedbackConfig
             {
                 EvaluationInterval = 2f,
                 SatisfactionDecayRate = 0.9f,
@@ -175,8 +172,8 @@ namespace Unidad.Core.DOTS.Tests
                 MinActionsForEvaluation = 3
             });
 
-            _pathConfig = CreateEntity(ComponentType.ReadWrite<PathRequestConfig>());
-            em.SetComponentData(_pathConfig, PathRequestConfig.Default);
+            var pathCfg = CreateEntity(ComponentType.ReadWrite<PathRequestConfig>());
+            em.SetComponentData(pathCfg, PathRequestConfig.Default);
 
             // === Shared Context ===
             _globalContext = SharedContextBuilder.Create(em)
@@ -189,7 +186,7 @@ namespace Unidad.Core.DOTS.Tests
             //   Village(0,0) --- Farm(20,0)
             //       |               |
             //   Well(0,20) --- Forest(20,20)
-            _navGraph = NavGraphBuilder.Create(em)
+            NavGraphBuilder.Create(em)
                 .WithId(NavGraph)
                 .AddNode(NodeVillage, new float3(0, 0, 0))
                 .AddNode(NodeFarm, new float3(20, 0, 0))
@@ -202,9 +199,9 @@ namespace Unidad.Core.DOTS.Tests
                 .Build();
 
             // === POIs ===
-            _farmPOI = CreatePOI(new float3(20, 0, 0), POIFarm, capacity: 2);
-            _forestPOI = CreatePOI(new float3(20, 0, 20), POIForest, capacity: 2);
-            _wellPOI = CreatePOI(new float3(0, 0, 20), POIWell, capacity: 3);
+            CreatePOI(new float3(20, 0, 0), POIFarm, capacity: 2);
+            CreatePOI(new float3(20, 0, 20), POIForest, capacity: 2);
+            CreatePOI(new float3(0, 0, 20), POIWell, capacity: 3);
 
             // === Market ===
             _market = CreateEntity(
@@ -235,7 +232,7 @@ namespace Unidad.Core.DOTS.Tests
             CreateConsumer(MarketId, ItemWood, rate: 2f);  // Supply > demand → price falls
 
             // === Schedule: work 6-18, sleep 22-6 ===
-            _schedule = ScheduleBuilder.Create(em)
+            ScheduleBuilder.Create(em)
                 .WithId(ScheduleDaily, "DailyRoutine")
                 .AddSlot(6f, 18f, StateWorking, strategyOverride: StrategyWork)
                 .AddSlot(22f, 6f, StateSleeping, strategyOverride: StrategyRest)
@@ -243,7 +240,7 @@ namespace Unidad.Core.DOTS.Tests
 
             // === Strategies ===
             // Work strategy: farm when hungry, gather when not, eat when starving
-            _workStrategy = StrategyBuilder.Create(em)
+            StrategyBuilder.Create(em)
                 .WithId(StrategyWork, "WorkStrategy")
 
                 .DefineAction(ActionFarm, ActionTypeFarm)
@@ -274,7 +271,7 @@ namespace Unidad.Core.DOTS.Tests
                 .Build();
 
             // Rest strategy: sleep (restores energy), idle
-            _restStrategy = StrategyBuilder.Create(em)
+            StrategyBuilder.Create(em)
                 .WithId(StrategyRest, "RestStrategy")
 
                 .DefineAction(ActionSleep, ActionTypeSleep)
