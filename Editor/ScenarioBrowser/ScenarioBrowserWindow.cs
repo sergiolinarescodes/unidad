@@ -95,11 +95,14 @@ namespace Unidad.Core.Editor.ScenarioBrowser
             var rightPanel = new VisualElement();
             rightPanel.style.flexGrow = 1;
 
+            var inspectorScroll = new ScrollView(ScrollViewMode.Vertical);
+            inspectorScroll.style.flexGrow = 1;
+            inspectorScroll.style.borderBottomWidth = 1;
+            inspectorScroll.style.borderBottomColor = new Color(0.3f, 0.3f, 0.3f);
+
             _inspectorContainer = new VisualElement();
-            _inspectorContainer.style.flexGrow = 1;
-            _inspectorContainer.style.borderBottomWidth = 1;
-            _inspectorContainer.style.borderBottomColor = new Color(0.3f, 0.3f, 0.3f);
-            rightPanel.Add(_inspectorContainer);
+            inspectorScroll.Add(_inspectorContainer);
+            rightPanel.Add(inspectorScroll);
 
             _resultsContainer = new ScrollView(ScrollViewMode.Vertical);
             _resultsContainer.style.minHeight = 100;

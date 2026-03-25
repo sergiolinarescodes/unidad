@@ -6,3 +6,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Unidad.Scripting.Tests")]
 [assembly: InternalsVisibleTo("TextRPG.Core")]
 [assembly: InternalsVisibleTo("TextRPG.Core.Tests")]
+[assembly: InternalsVisibleTo("Assembly-CSharp")]
