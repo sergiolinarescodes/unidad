@@ -104,17 +104,15 @@ namespace Unidad.Core.Bootstrap
         protected virtual void InstallAnimationResolver(ContainerBuilder builder) { }
 
         /// <summary>
-        /// Install UI system services (theme, text animation, element animator, dialog).
-        /// Override to customize or skip UI services.
+        /// Install UI system services (theme, element animator). Override to add
+        /// optional integrations such as TextAnimation/Dialog (require the
+        /// TextAnimationsForUIToolkit package + UNIDAD_TEXT_ANIMATIONS define).
         /// Called from InstallCoreServices before animation resolver.
         /// </summary>
         protected virtual void InstallUIServices(ContainerBuilder builder)
         {
             var uiInstaller = new UI.UISystemInstaller();
             uiInstaller.Install(builder);
-
-            var dialogInstaller = new UI.DialogSystemInstaller();
-            dialogInstaller.Install(builder);
         }
 
         /// <summary>
