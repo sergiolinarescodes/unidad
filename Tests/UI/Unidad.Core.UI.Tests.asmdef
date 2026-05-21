@@ -1,8 +1,11 @@
 {
-  "name": "Unidad.Core.Tests",
-  "rootNamespace": "Unidad.Core.Tests",
+  "name": "Unidad.Core.UI.Tests",
+  "rootNamespace": "Unidad.Core.Tests.Tests.UI",
   "references": [
-    "Unidad.Core.Runtime"
+    "Unidad.Core.Runtime",
+    "Unidad.Core.Tests",
+    "Unidad.Core.UI.Integration.TextAnimations.Runtime",
+    "TextAnimationsForUIToolkit"
   ],
   "includePlatforms": [
     "Editor"
@@ -15,7 +18,8 @@
   ],
   "autoReferenced": false,
   "defineConstraints": [
-    "UNITY_INCLUDE_TESTS"
+    "UNITY_INCLUDE_TESTS",
+    "UNIDAD_TEXT_ANIMATIONS"
   ],
   "versionDefines": [],
   "noEngineReferences": false

@@ -1,0 +1,20 @@
+{
+    "name": "Unidad.Core.UI.Integration.TextAnimations.Runtime",
+    "rootNamespace": "Unidad.Core.UI",
+    "references": [
+        "Reflex",
+        "TextAnimationsForUIToolkit",
+        "Unidad.Core.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNIDAD_TEXT_ANIMATIONS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
