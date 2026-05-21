@@ -3,7 +3,6 @@ using Unidad.Core.Bootstrap;
 using Unidad.Core.EventBus;
 using Unidad.Core.Testing;
 using Unidad.Core.UI.DesignSystem;
-using Unidad.Core.UI.TextAnimation;
 using Unidad.Core.UI.TextAnimation.ElementAnimation;
 
 namespace Unidad.Core.UI
@@ -18,10 +17,6 @@ namespace Unidad.Core.UI
                 var eventBus = container.Resolve<IEventBus>();
                 return (IThemeService)new ThemeService(eventBus);
             }, typeof(IThemeService));
-
-            // Text Animation
-            builder.AddSingleton(_ =>
-                (ITextAnimationService)new TextAnimationService(), typeof(ITextAnimationService));
 
             // Element Animator
             builder.AddSingleton(_ =>

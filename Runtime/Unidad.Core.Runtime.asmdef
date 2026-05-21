@@ -3,7 +3,6 @@
     "rootNamespace": "Unidad.Core",
     "references": [
         "Reflex",
-        "TextAnimationsForUIToolkit",
         "PrimeTween.Runtime",
         "Unity.InputSystem",
         "Unity.Collections",
