@@ -1,0 +1,19 @@
+{
+    "name": "Unidad.Core.UI.Integration.PrimeTween.Runtime",
+    "rootNamespace": "Unidad.Core.UI.WorldSpace",
+    "references": [
+        "PrimeTween.Runtime",
+        "Unidad.Core.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNIDAD_PRIMETWEEN"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
