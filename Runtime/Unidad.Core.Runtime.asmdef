@@ -3,7 +3,6 @@
     "rootNamespace": "Unidad.Core",
     "references": [
         "Reflex",
-        "PrimeTween.Runtime",
         "Unity.InputSystem",
         "Unity.Collections",
         "Unity.Mathematics",
