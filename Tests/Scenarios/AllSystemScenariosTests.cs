@@ -27,6 +27,12 @@ namespace Unidad.Core.Tests.Tests.Scenarios
             scenario.Execute();
             var result = scenario.Verify();
 
+            if (result.IsSkipped)
+            {
+                Assert.Ignore(result.SkipReason);
+                return;
+            }
+
             Assert.That(result.Success, Is.True,
                 result.FailureMessage ?? "Scenario failed with no message");
         }

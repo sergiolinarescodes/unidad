@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +14,15 @@ namespace Unidad.Core.Testing
         public bool Success { get; }
         public string FailureMessage { get; }
         public IReadOnlyList<CheckResult> Checks { get; }
+
+        /// <summary>
+        /// True when the scenario decided not to run (missing fixture, unsupported
+        /// platform, etc.). The runner should ignore — not fail — these results.
+        /// </summary>
+        public bool IsSkipped { get; }
+
+        /// <summary>Human-readable reason when <see cref="IsSkipped"/> is true.</summary>
+        public string SkipReason { get; }
 
         public ScenarioVerificationResult(IReadOnlyList<CheckResult> checks)
         {
@@ -31,6 +41,14 @@ namespace Unidad.Core.Testing
             }
         }
 
+        private ScenarioVerificationResult(string skipReason)
+        {
+            Checks = Array.Empty<CheckResult>();
+            Success = true; // not a failure, but the caller should branch on IsSkipped first
+            IsSkipped = true;
+            SkipReason = skipReason ?? "skipped";
+        }
+
         public int PassedCount => Checks.Count(c => c.Passed);
         public int FailedCount => Checks.Count(c => !c.Passed);
         public int TotalCount => Checks.Count;
@@ -43,6 +61,16 @@ namespace Unidad.Core.Testing
         public static ScenarioVerificationResult Fail(string checkName, string message)
         {
             return new ScenarioVerificationResult(new[] { new CheckResult(checkName, false, message) });
+        }
+
+        /// <summary>
+        /// Build a result that signals "scenario could not run — ignore me, don't fail".
+        /// Used when a fixture (authored tracks, ONNX model, prefab) is missing in a
+        /// clean clone or CI environment.
+        /// </summary>
+        public static ScenarioVerificationResult Skip(string reason)
+        {
+            return new ScenarioVerificationResult(reason);
         }
 
         public sealed record CheckResult(string Name, bool Passed, string Message);

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Unidad.Core.Bootstrap;
+using Unidad.Core.Testing;
 
 namespace Unidad.Core.Tests.Tests.Conventions
 {
@@ -145,8 +146,15 @@ namespace Unidad.Core.Tests.Tests.Conventions
                     $"{installerType.Name}.CreateTestFactory() returned null");
 
                 var scenarios = factory.GetScenarios().ToList();
-                Assert.That(scenarios.Count, Is.GreaterThan(0),
-                    $"{installerType.Name} has a test factory but no scenarios");
+                if (scenarios.Count == 0)
+                {
+                    var opt = factory.GetType().GetCustomAttribute<NoScenariosJustifiedAttribute>();
+                    Assert.That(opt, Is.Not.Null,
+                        $"{installerType.Name} has a test factory but no scenarios " +
+                        $"(decorate the factory with [NoScenariosJustified(\"...\")] " +
+                        $"if scenarios are intentionally omitted)");
+                    continue;
+                }
             }
         }
     }

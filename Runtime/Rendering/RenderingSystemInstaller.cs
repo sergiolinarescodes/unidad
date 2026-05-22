@@ -17,6 +17,7 @@ namespace Unidad.Core.Rendering
         public ISystemTestFactory CreateTestFactory() => new RenderingTestFactory();
     }
 
+    [NoScenariosJustified("RenderInstanceService is covered by InstanceGatherSystem DOTS tests; a live scenario adds no signal.")]
     internal class RenderingTestFactory : ISystemTestFactory
     {
         public Type[] TestedServices => new[] { typeof(IRenderInstanceService) };
