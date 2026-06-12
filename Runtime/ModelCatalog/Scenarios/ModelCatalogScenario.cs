@@ -1,11 +1,12 @@
 using UnityEngine;
 using Unidad.Core.Abstractions;
 using Unidad.Core.EventBus;
-using EventBus = Unidad.Core.EventBus.EventBus;
 using Unidad.Core.Testing;
 
 namespace Unidad.Core.ModelCatalog.Scenarios
 {
+    using EventBus = Unidad.Core.EventBus.EventBus;
+
     /// <summary>
     /// Visual scenario: spawns a pipeline-imported model prefab from the catalog,
     /// plays its baked Animator clip and a kind effect. Animator/tweens only move

@@ -3,11 +3,12 @@ using NUnit.Framework;
 using UnityEngine;
 using Unidad.Core.Abstractions;
 using Unidad.Core.EventBus;
-using EventBus = Unidad.Core.EventBus.EventBus;
 using Unidad.Core.ModelCatalog;
 
 namespace Unidad.Core.Tests.ModelCatalog
 {
+    using EventBus = Unidad.Core.EventBus.EventBus;
+
     [TestFixture]
     public sealed class ModelCatalogServiceTests
     {

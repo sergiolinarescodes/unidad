@@ -2,6 +2,8 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Unidad.Core.Tests")]
 [assembly: InternalsVisibleTo("Unidad.Core.Editor")]
+[assembly: InternalsVisibleTo("Unidad.Core.ModelCatalog")]
+[assembly: InternalsVisibleTo("Unidad.Core.ModelCatalog.Tests")]
 [assembly: InternalsVisibleTo("Unidad.Scripting.Runtime")]
 [assembly: InternalsVisibleTo("Unidad.Scripting.Tests")]
 [assembly: InternalsVisibleTo("TextRPG.Core")]
