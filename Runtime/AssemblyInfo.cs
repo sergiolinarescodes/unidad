@@ -7,3 +7,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("TextRPG.Core")]
 [assembly: InternalsVisibleTo("TextRPG.Core.Tests")]
 [assembly: InternalsVisibleTo("Assembly-CSharp")]
+[assembly: InternalsVisibleTo("Experimental.Core")]
+[assembly: InternalsVisibleTo("Experimental.Core.Tests")]

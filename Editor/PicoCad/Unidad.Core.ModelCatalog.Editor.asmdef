@@ -1,0 +1,27 @@
+{
+    "name": "Unidad.Core.ModelCatalog.Editor",
+    "rootNamespace": "Unidad.Core.Editor.PicoCad",
+    "references": [
+        "Unidad.Core.Runtime",
+        "Unidad.Core.ModelCatalog"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNIDAD_PRIMETWEEN"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.kyrylokuzyk.primetween",
+            "expression": "",
+            "define": "UNIDAD_PRIMETWEEN"
+        }
+    ],
+    "noEngineReferences": false
+}

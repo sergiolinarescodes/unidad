@@ -1,0 +1,35 @@
+{
+    "name": "Unidad.Core.ModelCatalog.Editor.Mcp",
+    "rootNamespace": "Unidad.Core.Editor.Mcp",
+    "references": [
+        "Unidad.Core.Runtime",
+        "Unidad.Core.ModelCatalog",
+        "Unidad.Core.ModelCatalog.Editor",
+        "Unity.AI.MCP.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNIDAD_PRIMETWEEN",
+        "UNIDAD_UNITY_MCP"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.kyrylokuzyk.primetween",
+            "expression": "",
+            "define": "UNIDAD_PRIMETWEEN"
+        },
+        {
+            "name": "com.unity.ai.assistant",
+            "expression": "",
+            "define": "UNIDAD_UNITY_MCP"
+        }
+    ],
+    "noEngineReferences": false
+}

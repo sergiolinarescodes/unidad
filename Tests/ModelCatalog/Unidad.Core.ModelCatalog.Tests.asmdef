@@ -1,0 +1,30 @@
+{
+    "name": "Unidad.Core.ModelCatalog.Tests",
+    "rootNamespace": "Unidad.Core.Tests.ModelCatalog",
+    "references": [
+        "Unidad.Core.Runtime",
+        "Unidad.Core.ModelCatalog"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS",
+        "UNIDAD_PRIMETWEEN"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.kyrylokuzyk.primetween",
+            "expression": "",
+            "define": "UNIDAD_PRIMETWEEN"
+        }
+    ],
+    "noEngineReferences": false
+}

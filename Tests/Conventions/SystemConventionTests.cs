@@ -18,7 +18,8 @@ namespace Unidad.Core.Tests.Tests.Conventions
         private static readonly string[] AllowedAssemblyPrefixes =
         {
             "Unidad.Core",
-            "TextRPG"
+            "TextRPG",
+            "Experimental"
         };
 
         private static IEnumerable<Type> GetAllGameTypes()

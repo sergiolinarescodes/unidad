@@ -1,0 +1,26 @@
+{
+    "name": "Unidad.Core.ModelCatalog",
+    "rootNamespace": "Unidad.Core.ModelCatalog",
+    "references": [
+        "Unidad.Core.Runtime",
+        "Reflex",
+        "PrimeTween.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNIDAD_PRIMETWEEN"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.kyrylokuzyk.primetween",
+            "expression": "",
+            "define": "UNIDAD_PRIMETWEEN"
+        }
+    ],
+    "noEngineReferences": false
+}
