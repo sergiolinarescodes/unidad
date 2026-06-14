@@ -94,7 +94,10 @@ design-system subsection.
 2. Declare the game installer:
    `public sealed class ModelCatalogInstaller : ModelCatalogInstallerBase { }`
    in your game assembly.
-3. Create `tools/picocad-pipeline/pipeline.config.json` (copy from a sibling
-   project or this doc) and gitignore `out/` + `jobs/`.
-4. Copy the skill stub into `.claude/skills/picocad-model/SKILL.md`.
+3. Create `tools/picocad-pipeline/pipeline.config.json` by copying the shipped
+   template `Tools~/picocad-pipeline/pipeline.config.template.json` (all paths
+   are conventional defaults — adjust only if your layout differs) and gitignore
+   `out/` + `jobs/`.
+4. Copy the shipped stub `Tools~/picocad-pipeline/skill/project-stub.SKILL.md`
+   into `.claude/skills/picocad-model/SKILL.md`.
 5. Run `/picocad-model` — the first-run interview scaffolds your design system.

@@ -45,4 +45,6 @@ byte-identical OBJ/MTL and pixel-identical texture RGB.
 ## Config
 
 `pipeline.config.json` holds every project-specific path (picocad dir, Unity
-target folders, registries, fps). Adopters edit this file only.
+target folders, registries, fps). Adopters copy `pipeline.config.template.json`
+(shipped beside this README) into their project's `tools/picocad-pipeline/` and
+edit that file only.

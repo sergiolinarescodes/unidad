@@ -19,6 +19,24 @@ All return `{success, message, data}` / `{success: false, error}`. A missing
 tool (ToolSearch finds nothing) means the editor predates this package version
 or MCP is down → use the fallbacks below.
 
+## Effect preview (automatic — never add it manually)
+
+`PicoCadPrefabBuilder` attaches a `ModelEffectPreview` component to EVERY prefab
+root (runtime: `Runtime/ModelCatalog/ModelEffectPreview.cs`, inspector:
+`Editor/PicoCad/ModelEffectPreviewEditor.cs`). It serializes only `modelId` +
+`kindId`; the inspector enumerates the kind's PrimeTween effect ids LIVE from
+the registered `IModelEffectProfile` implementation and baked clip names from
+the AnimatorController, rendering one play button per entry (play mode, scene
+instances). New effects added to a profile therefore appear on all existing
+prefabs after the domain reload — no rebuild, no per-model wiring. Do not add
+or configure this component in workflows or codegen; the builder owns it.
+
+Material effects in profiles MUST use
+`Unidad.Core.ModelCatalog.Effects.ModelEffectUtility` (e.g. `Flash`). glTFast
+materials name their properties `baseColorFactor`/`emissiveFactor` (not
+`_BaseColor`/`_Color`) and the SRP Batcher ignores `MaterialPropertyBlock`
+values — naive property tweens silently do nothing.
+
 ## Ordering rules (domain reloads kill in-flight MCP state)
 
 1. Any C# codegen (new-kind view/effect classes in the GAME assembly) happens
@@ -42,10 +60,11 @@ internal class CommandScript : IRunCommand
     public void Execute(ExecutionResult result)
     {
         AssetDatabase.Refresh();
+        var kind = ModelCatalogRegistry.FindKind("<KIND_ID>"); // null ok → kindId "misc"
         var report = PicoCadPrefabBuilder.Build(
             "Assets/PicoCadImports/<NAME>/<NAME>.gltf",
             "Assets/PicoCadImports/<NAME>/<NAME>.manifest.json",
-            "<KIND_FOLDER>");
+            "<KIND_FOLDER>", kind, "<MODEL_ID>");
         result.Log("[PicoCadPrefabBuilder] {0}", report.ToString());
     }
 }

@@ -37,10 +37,12 @@ Return that block.`,
     } }
 )
 
-const job = JSON.parse(await agent(
-  `Read the file ${a.jobPath} and return its raw JSON content exactly. No commentary.`,
+const jobText = await agent(
+  `Read the file ${a.jobPath} and return its raw JSON content exactly. No commentary, no markdown code fences.`,
   { label: 'read-job', model: 'haiku', phase: 'Probe' }
-))
+)
+// Agents sometimes fence their reply despite instructions — strip before parsing.
+const job = JSON.parse(jobText.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, ''))
 
 let codegen = null
 if (job.kind && job.kind.mode === 'new' && job.kind.needsView !== false) {
@@ -51,6 +53,7 @@ if (job.kind && job.kind.mode === 'new' && job.kind.needsView !== false) {
 Job file: ${a.jobPath}. Read it, the design system doc, and these reference implementations first:
 - ${PKG}/Runtime/ModelCatalog/Views/ModelViewBase.cs (base class; views are plain C#, NOT MonoBehaviours)
 - ${PKG}/Runtime/ModelCatalog/Effects/IModelEffectProfile.cs and Effects/BounceEffectProfile.cs (the template to mirror)
+- ${PKG}/Runtime/ModelCatalog/Effects/ModelEffectUtility.cs — MANDATORY for any material color/flash/tint effect. Never tween shader properties directly: glTFast materials use baseColorFactor/emissiveFactor (not _BaseColor/_Color) and the SRP Batcher ignores MaterialPropertyBlock values. Transform tweens (scale/position/rotation) are fine via plain PrimeTween.
 - ${PKG}/Runtime/ModelCatalog/ModelCatalogInstallerBase.cs (the hooks you are overriding)
 - ${REPO}/Assets/Scripts/ModelCatalog/ModelCatalogInstaller.cs (the game's sealed installer — THIS is where you register)
 

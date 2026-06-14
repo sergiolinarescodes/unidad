@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using Unidad.Core.ModelCatalog;
 
 namespace Unidad.Core.Editor.PicoCad
 {
@@ -32,7 +33,10 @@ namespace Unidad.Core.Editor.PicoCad
         /// <param name="gltfAssetPath">Project-relative path of the imported .gltf (e.g. Assets/PicoCadImports/pig/pig.gltf).</param>
         /// <param name="manifestPath">Project-relative or absolute path of the converter's .manifest.json.</param>
         /// <param name="kindFolder">Folder under Assets/Resources/Models (e.g. "Critters"). Defaults to "Misc".</param>
-        public static BuildReport Build(string gltfAssetPath, string manifestPath, string kindFolder = "Misc")
+        /// <param name="kind">Catalog kind entry; identifies the effect profile on the prefab's ModelEffectPreview. Falls back to "misc".</param>
+        /// <param name="modelId">Catalog model id stamped on the ModelEffectPreview. Defaults to the manifest name.</param>
+        public static BuildReport Build(string gltfAssetPath, string manifestPath, string kindFolder = "Misc",
+            ModelKindDefinition kind = null, string modelId = null)
         {
             var report = new BuildReport();
             var manifest = PicoCadManifest.Load(manifestPath);
@@ -70,6 +74,8 @@ namespace Unidad.Core.Editor.PicoCad
                     if (animator != null) Object.DestroyImmediate(animator);
                 }
 
+                AttachEffectPreview(instance, manifest, kind, modelId, report);
+
                 report.prefabPath = $"{targetFolder}/{manifest.name}.prefab";
                 PrefabUtility.SaveAsPrefabAsset(instance, report.prefabPath);
                 report.messages.Add($"prefab saved: {report.prefabPath}");
@@ -81,6 +87,21 @@ namespace Unidad.Core.Editor.PicoCad
 
             AssetDatabase.SaveAssets();
             return report;
+        }
+
+        /// <summary>
+        /// Every built prefab carries a ModelEffectPreview at its root so kind
+        /// effects and baked clips can be previewed from the inspector. Only the
+        /// catalog identity is serialized — the effect list is enumerated live.
+        /// </summary>
+        static void AttachEffectPreview(GameObject instance, PicoCadManifest manifest,
+            ModelKindDefinition kind, string modelId, BuildReport report)
+        {
+            var preview = instance.GetComponent<ModelEffectPreview>();
+            if (preview == null) preview = instance.AddComponent<ModelEffectPreview>();
+            preview.modelId = string.IsNullOrEmpty(modelId) ? manifest.name : modelId;
+            preview.kindId = string.IsNullOrEmpty(kind?.id) ? "misc" : kind.id;
+            report.messages.Add($"effect preview attached: model '{preview.modelId}', kind '{preview.kindId}'");
         }
 
         static void ConfigureTexture(string gltfAssetPath, PicoCadManifest manifest, BuildReport report)
@@ -175,7 +196,15 @@ namespace Unidad.Core.Editor.PicoCad
                 return;
             }
             var manifestPath = gltfPath.Replace(".gltf", ".manifest.json");
-            var report = Build(gltfPath, manifestPath);
+
+            // Recover catalog identity from models.json when the model was imported before,
+            // so the rebuilt prefab keeps its kind (and effect preview) without MCP.
+            var name = Path.GetFileNameWithoutExtension(gltfPath);
+            var entry = ModelCatalogRegistry.LoadModels()
+                .FirstOrDefault(m => m.prefabPath != null && m.prefabPath.EndsWith($"/{name}"));
+            var kind = entry != null ? ModelCatalogRegistry.FindKind(entry.kindId) : null;
+
+            var report = Build(gltfPath, manifestPath, kind?.folder ?? "Misc", kind, entry?.id);
             Debug.Log($"[PicoCadPrefabBuilder] {report}");
         }
     }

@@ -1,0 +1,16 @@
+{
+  "converterDir": "Packages/com.unidad.core/Tools~/picocad-pipeline",
+  "workflowsDir": "Packages/com.unidad.core/Tools~/picocad-pipeline/workflows",
+  "picocadDir": "%APPDATA%/picocad2",
+  "outDir": "tools/picocad-pipeline/out",
+  "jobsDir": "tools/picocad-pipeline/jobs",
+  "unityImportDir": "Assets/PicoCadImports",
+  "prefabRoot": "Assets/Resources/Models",
+  "kindsRegistry": "Assets/Resources/ModelCatalog/kinds.json",
+  "modelsRegistry": "Assets/Resources/ModelCatalog/models.json",
+  "designSystemDoc": "docs/model-pipeline/DESIGN_SYSTEM.md",
+  "designSystemTemplate": "Packages/com.unidad.core/Documentation~/model-pipeline/DESIGN_SYSTEM.template.md",
+  "defaultScale": 1,
+  "animationFps": 30,
+  "verifyMaxIterations": 3
+}

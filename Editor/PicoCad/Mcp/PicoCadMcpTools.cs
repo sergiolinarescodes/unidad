@@ -114,11 +114,10 @@ namespace Unidad.Core.Editor.Mcp
                 var kindId = string.IsNullOrEmpty(parameters.KindId) ? "misc" : parameters.KindId;
                 var kind = ModelCatalogRegistry.FindKind(kindId);
                 var folder = !string.IsNullOrEmpty(kind?.folder) ? kind.folder : "Misc";
+                var modelId = string.IsNullOrEmpty(parameters.ModelId) ? name : parameters.ModelId;
 
                 var report = PicoCadPrefabBuilder.Build(
-                    $"{destDir}/{name}.gltf", $"{destDir}/{name}.manifest.json", folder);
-
-                var modelId = string.IsNullOrEmpty(parameters.ModelId) ? name : parameters.ModelId;
+                    $"{destDir}/{name}.gltf", $"{destDir}/{name}.manifest.json", folder, kind, modelId);
                 if (parameters.Register)
                 {
                     ModelCatalogRegistry.UpsertModel(new ModelEntry
