@@ -1,0 +1,28 @@
+{
+    "name": "Unidad.Core.Editor.LiveTesting.Mcp",
+    "rootNamespace": "Unidad.Core.Editor.LiveTesting.Mcp",
+    "references": [
+        "Unidad.Core.Runtime",
+        "Unidad.Core.Editor.LiveTesting",
+        "Unity.AI.MCP.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNIDAD_UNITY_MCP"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.ai.assistant",
+            "expression": "",
+            "define": "UNIDAD_UNITY_MCP"
+        }
+    ],
+    "noEngineReferences": false
+}
