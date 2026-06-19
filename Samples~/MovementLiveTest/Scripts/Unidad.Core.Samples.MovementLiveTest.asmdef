@@ -1,0 +1,17 @@
+{
+    "name": "Unidad.Core.Samples.MovementLiveTest",
+    "rootNamespace": "Experimental.Movement",
+    "references": [
+        "Unidad.Core.Runtime",
+        "Reflex"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

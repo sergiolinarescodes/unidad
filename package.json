@@ -16,5 +16,12 @@
     "testing",
     "patterns",
     "pooling"
+  ],
+  "samples": [
+    {
+      "displayName": "Movement Live MCP Test",
+      "description": "2D movement feature with a full Live MCP Test (5 cases) - the reference example for the Live MCP Testing pattern.",
+      "path": "Samples~/MovementLiveTest"
+    }
   ]
 }
