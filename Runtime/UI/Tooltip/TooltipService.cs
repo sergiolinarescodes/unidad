@@ -317,8 +317,8 @@ namespace Unidad.Core.UI.Tooltip
                     pos.x = Mathf.Clamp(pos.x, 0, Mathf.Max(0, containerSize.x - subSize.x));
                     pos.y = Mathf.Clamp(pos.y, 0, Mathf.Max(0, containerSize.y - subSize.y));
 
-                    container.style.left = pos.x;
-                    container.style.top = pos.y;
+                    container.style.left = Mathf.Round(pos.x);
+                    container.style.top = Mathf.Round(pos.y);
 
                     var slideDir = resolvedPlacement switch
                     {
@@ -379,8 +379,10 @@ namespace Unidad.Core.UI.Tooltip
             var result = TooltipPositioner.Compute(anchorRect, tooltipSize, containerSize, placement, style.ArrowSize);
             handle.ResolvedPlacement = result.Placement;
 
-            container.style.left = result.Position.x;
-            container.style.top = result.Position.y;
+            // Round to whole pixels so the tooltip's border/frame never straddles a device-pixel boundary
+            // (the "fat/uneven border depending on where the tooltip lands" artifact).
+            container.style.left = Mathf.Round(result.Position.x);
+            container.style.top = Mathf.Round(result.Position.y);
 
             if (style.ShowArrow && handle.Arrow != null)
                 StyleArrow(handle.Arrow, result.Placement, result.ArrowOffset, style);
