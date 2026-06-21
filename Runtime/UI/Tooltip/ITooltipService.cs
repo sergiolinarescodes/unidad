@@ -18,6 +18,13 @@ namespace Unidad.Core.UI.Tooltip
 
         void SetTooltipLayer(VisualElement layer);
 
+        /// <summary>
+        /// Optional per-tooltip border painter. When set, each screen-space tooltip's flat style border is
+        /// suppressed and this is invoked on the container so a host can paint its own border (e.g. the HUD's
+        /// fine-frame) — keeping the package free of any game-specific border code.
+        /// </summary>
+        void SetFrameDecorator(Action<VisualElement> decorator);
+
         void Attach(GameObject target, string text, TooltipStyle style = null,
             Vector3 offset = default, WorldTooltipCollision collision = WorldTooltipCollision.None,
             WorldTooltipShowMode showMode = WorldTooltipShowMode.FadeIn);

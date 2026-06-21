@@ -17,6 +17,7 @@ namespace Unidad.Core.UI.Tooltip
         private readonly IElementAnimator _elementAnimator;
         private readonly ITimeProvider _timeProvider;
         private VisualElement _tooltipLayer;
+        private Action<VisualElement> _frameDecorator;
         private int _nextId;
         private readonly Dictionary<int, TooltipHandle> _activeTooltips = new();
         private readonly Dictionary<int, WorldTooltipHandle> _activeWorldTooltips = new();
@@ -44,6 +45,26 @@ namespace Unidad.Core.UI.Tooltip
         public void SetTooltipLayer(VisualElement layer)
         {
             _tooltipLayer = layer;
+        }
+
+        public void SetFrameDecorator(Action<VisualElement> decorator)
+        {
+            _frameDecorator = decorator;
+        }
+
+        // Suppress the flat style border + radius and let the injected decorator paint the frame (no-op if none set).
+        private void ApplyFrame(VisualElement container)
+        {
+            if (_frameDecorator == null) return;
+            container.style.borderTopWidth = 0;
+            container.style.borderBottomWidth = 0;
+            container.style.borderLeftWidth = 0;
+            container.style.borderRightWidth = 0;
+            container.style.borderTopLeftRadius = 0;
+            container.style.borderTopRightRadius = 0;
+            container.style.borderBottomLeftRadius = 0;
+            container.style.borderBottomRightRadius = 0;
+            _frameDecorator(container);
         }
 
         // ── Screen-space tooltips ──
@@ -114,6 +135,8 @@ namespace Unidad.Core.UI.Tooltip
                 arrow.pickingMode = PickingMode.Ignore;
                 container.Add(arrow);
             }
+
+            ApplyFrame(container); // injected fine-frame overlay (drawn on top of the content)
 
             var handle = new TooltipHandle(id, container, arrow);
             _activeTooltips[id] = handle;
@@ -243,6 +266,8 @@ namespace Unidad.Core.UI.Tooltip
                     label.style.whiteSpace = WhiteSpace.Normal;
                     container.Add(label);
                 }
+
+                ApplyFrame(container); // sub-tooltips wear the same injected fine-frame
 
                 var subHandle = new TooltipHandle(subId, container, null);
                 _activeTooltips[subId] = subHandle;

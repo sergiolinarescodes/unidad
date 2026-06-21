@@ -5,7 +5,8 @@ namespace Unidad.Core.UI.Tooltip
 {
     public sealed class TooltipStyle
     {
-        public Color BackgroundColor { get; init; } = new(0.086f, 0.129f, 0.243f, 0.95f);
+        // Dark grey, 70% opaque — the shared GRAVE INTENT tooltip background (semi-transparent so the scene reads through).
+        public Color BackgroundColor { get; init; } = new(0.10f, 0.10f, 0.10f, 0.70f);
         public Color BorderColor { get; init; } = new(1f, 1f, 1f, 0.15f);
         public int BorderWidth { get; init; } = ThemeTokens.BorderWidth;
         public int BorderRadius { get; init; } = ThemeTokens.RadiusMd;
@@ -23,11 +24,8 @@ namespace Unidad.Core.UI.Tooltip
 
         public static readonly TooltipStyle Default = new();
 
-        public static readonly TooltipStyle Info = new()
-        {
-            BackgroundColor = new Color(0.18f, 0.30f, 0.55f, 0.95f),
-            BorderColor = new Color(0.29f, 0.56f, 0.85f, 0.4f)
-        };
+        // Info shares the one tooltip look now (dark grey bg + injected frame); kept as a named alias for call sites.
+        public static readonly TooltipStyle Info = new();
 
         public static readonly TooltipStyle Minimal = new()
         {
