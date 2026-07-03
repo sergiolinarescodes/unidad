@@ -80,6 +80,11 @@ namespace Unidad.Core.UI.Tooltip
 
             style ??= TooltipStyle.Default;
             var id = _nextId++;
+            {
+                string dbg = content.IsCustom ? "custom" : (content.Text ?? "");
+                if (dbg.Length > 40) dbg = dbg.Substring(0, 40);
+                Debug.Log($"[TooltipDbg] SHOW id={id} sub={content.SubTooltips?.Count ?? 0} '{dbg.Replace("\n", "|")}'");
+            }
 
             // Build tooltip visual tree
             var container = new VisualElement { name = $"tooltip-{id}" };
@@ -177,6 +182,7 @@ namespace Unidad.Core.UI.Tooltip
         {
             if (handle == null || !_activeTooltips.ContainsKey(handle.Id))
                 return;
+            Debug.Log($"[TooltipDbg] HIDE id={handle.Id} subs={handle.SubHandles.Count}");
 
             // Cancel pending sub-tooltip timer
             handle.SubTooltipTimer?.Pause();
@@ -215,6 +221,7 @@ namespace Unidad.Core.UI.Tooltip
 
         private void ShowSubTooltips(TooltipHandle parentHandle, TooltipContent parentContent, TooltipStyle parentStyle)
         {
+            Debug.Log($"[TooltipDbg] SUBSHOW parent={parentHandle.Id} stillActive={_activeTooltips.ContainsKey(parentHandle.Id)}");
             if (!_activeTooltips.ContainsKey(parentHandle.Id)) return;
             if (_tooltipLayer == null) return;
 
@@ -474,9 +481,16 @@ namespace Unidad.Core.UI.Tooltip
         {
             TooltipHandle currentHandle = null;
             IVisualElementScheduledItem pendingShow = null;
+            IVisualElementScheduledItem pendingHide = null;
 
             void OnPointerEnter(PointerEnterEvent evt)
             {
+                // Cancel any deferred hide: a SPURIOUS leave — adding a keyword sub-tooltip to the panel re-picks
+                // the pointer and fires PointerLeave without the cursor actually moving — is immediately followed by
+                // this re-enter, so cancelling here keeps the tooltip (and its sub-tooltip) up.
+                pendingHide?.Pause();
+                pendingHide = null;
+                if (currentHandle != null || pendingShow != null) return; // already shown/scheduled — no duplicate
                 pendingShow = target.schedule.Execute(() =>
                 {
                     var anchor = TooltipAnchor.FromElement(target);
@@ -486,14 +500,20 @@ namespace Unidad.Core.UI.Tooltip
 
             void OnPointerLeave(PointerLeaveEvent evt)
             {
-                pendingShow?.Pause();
-                pendingShow = null;
-
-                if (currentHandle != null)
+                // DEFER the hide a few frames. A spurious leave (see above) is cancelled by the re-enter that
+                // follows it within the same update; only a REAL leave (no re-enter arrives) actually hides.
+                pendingHide?.Pause();
+                pendingHide = target.schedule.Execute(() =>
                 {
-                    Hide(currentHandle);
-                    currentHandle = null;
-                }
+                    pendingShow?.Pause();
+                    pendingShow = null;
+                    if (currentHandle != null)
+                    {
+                        Hide(currentHandle);
+                        currentHandle = null;
+                    }
+                    pendingHide = null;
+                }).StartingIn(50);
             }
 
             target.RegisterCallback<PointerEnterEvent>(OnPointerEnter);
@@ -505,6 +525,7 @@ namespace Unidad.Core.UI.Tooltip
                 target.UnregisterCallback<PointerLeaveEvent>(OnPointerLeave);
 
                 pendingShow?.Pause();
+                pendingHide?.Pause();
                 if (currentHandle != null)
                     Hide(currentHandle);
             });

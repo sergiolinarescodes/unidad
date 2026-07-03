@@ -26,9 +26,16 @@ conversation (workflows run headless and cannot ask questions).
 
 ## Hard rules
 
-1. **Fable 5 for art**: every agent doing design, modeling, texturing, or
-   animation judgment runs with `model: 'fable'`. Mechanical agents (run
-   converter, file copies, validation) use `model: 'haiku'`.
+1. **Fable 5 owns everything visual & spatial; mechanical models never touch
+   it.** Any agent that makes a design, geometry/modeling, texturing, layout, or
+   animation judgment — authoring vertices/faces, placing parts, choosing the
+   palette, building or painting the texture page, mapping UVs, or reviewing a
+   render — runs with `model: 'fable'`. Non-art models (Opus/`claude`, `haiku`)
+   are weak at 3D/spatial reasoning, so they must NEVER place geometry, paint
+   texture, or judge a render; they do only mechanical plumbing (run the
+   converter, file copies, the validation harness, scene-node/metadata
+   boilerplate, orchestration, running tools). If a task needs spatial or visual
+   judgment it is Fable's — no exceptions. Play to strengths.
 2. Invoke workflows by **scriptPath**
    (`Packages/com.unidad.core/Tools~/picocad-pipeline/workflows/picocad-*.js`),
    never by name (the name registry only scans at session start).
@@ -40,6 +47,16 @@ conversation (workflows run headless and cannot ask questions).
    (`Unidad_PicoCad_Status/ImportModel/RegisterKind/SpawnPreview/CleanupPreview`
    on the unity-mcp server — see references/unity-builder.md for exact names and
    fallbacks). Never hand-roll RunCommand snippets when a tool exists.
+6. **Model limb-ready by default — this does NOT constrain the design.** Some
+   models become limbed enemies; the detachment rig resolves each limb by a child
+   transform whose **name contains** `EnemyLimbDef.ModelPartId` (case-insensitive),
+   then reparents that transform out of the enemy and throws it. So keep every
+   plausibly-detachable part (head, torso, an arm, a leg, a wing, a tail, a tier, a
+   pane, a finial) as its **own, limb-meaningfully-named node** instead of one merged
+   mesh — a free nicety that costs zero design freedom. Tell the modeling agent this
+   as context, not a rule: build the silhouette it wants first; a genuinely
+   indivisible design still works (it just degrades to a whole-model highlight with no
+   severed parts). The torso/core mass should be a node too (it's the anchor part).
 
 ## Flow
 
