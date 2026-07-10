@@ -54,7 +54,7 @@ Job file: ${a.jobPath} (read the generate block for paths)
 
 Run:
 1. node %APPDATA%/picocad2/audit_transparency.js "<txt>" (if the script exists)
-2. node -e parse check: JSON.parse the txt, assert texture.pixels.length === 16384, 16 colors, every face's vertex_ids within range and uvs length == 2*corners, metadata.version == "2.0".
+2. node -e parse check: JSON.parse the txt, assert texture.pixels.length === 16384, 16 colors, every face's vertex_ids within range and uvs length == 2*corners, metadata.version == "2.0". IMPORTANT — picoCAD2 vertex_ids are 1-BASED indices into each mesh's LOGICAL vertex list, and a mesh's vertices array is a FLAT list of x,y,z numbers (so a mesh's vertex count is vertices.length divided by 3, and valid ids are 1..vertexCount INCLUSIVE; id equal to vertexCount is valid, NOT out of bounds; do NOT assume 0-based).
 3. node Packages/com.unidad.core/Tools~/picocad-pipeline/convert.js "<txt>" --out tools/picocad-pipeline/out/_validate_tmp (repo C:/Users/kelns/repos/Experimental) — the converter's validation must pass.
 Update the job file generate.validation accordingly and return {"validation": "PASS"} or {"validation": "FAIL", "error": "..."}.`,
   { label: 'validate', model: 'haiku', phase: 'Validate', schema: {
