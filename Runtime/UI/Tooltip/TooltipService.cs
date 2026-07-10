@@ -194,20 +194,27 @@ namespace Unidad.Core.UI.Tooltip
                 if (_activeTooltips.ContainsKey(sub.Id))
                 {
                     _activeTooltips.Remove(sub.Id);
-                    _elementAnimator.Animate(sub.Root,
-                        new ElementAnimationConfig(ElementAnimationType.FadeOut, 0.1f),
-                        () => sub.Root.RemoveFromHierarchy());
+                    FadeOutAndRemove(sub.Root);
                 }
             }
             handle.SubHandles.Clear();
 
             _activeTooltips.Remove(handle.Id);
 
-            _elementAnimator.Animate(handle.Root,
-                new ElementAnimationConfig(ElementAnimationType.FadeOut, 0.1f),
-                () => handle.Root.RemoveFromHierarchy());
+            FadeOutAndRemove(handle.Root);
 
             Publish(new TooltipHiddenEvent(handle.Id, false));
+        }
+
+        // Fade out, then remove — with a watchdog: if the animator's completion callback never fires
+        // (animation interrupted / animator torn down), force-remove so a hidden tooltip can never
+        // linger on screen. root.schedule only runs while attached, so this is a no-op once removed.
+        private void FadeOutAndRemove(VisualElement root)
+        {
+            _elementAnimator.Animate(root,
+                new ElementAnimationConfig(ElementAnimationType.FadeOut, 0.1f),
+                () => root.RemoveFromHierarchy());
+            root.schedule.Execute(() => root.RemoveFromHierarchy()).StartingIn(500);
         }
 
         public void HideAll()
@@ -516,13 +523,31 @@ namespace Unidad.Core.UI.Tooltip
                 }).StartingIn(50);
             }
 
+            // The deferred hide above is scheduled on target.schedule, which never runs once the
+            // target leaves the panel (UI rebuild while hovered) — the classic stuck-forever tooltip.
+            // A detach is always a real leave, so hide immediately.
+            void OnDetach(DetachFromPanelEvent evt)
+            {
+                pendingShow?.Pause();
+                pendingShow = null;
+                pendingHide?.Pause();
+                pendingHide = null;
+                if (currentHandle != null)
+                {
+                    Hide(currentHandle);
+                    currentHandle = null;
+                }
+            }
+
             target.RegisterCallback<PointerEnterEvent>(OnPointerEnter);
             target.RegisterCallback<PointerLeaveEvent>(OnPointerLeave);
+            target.RegisterCallback<DetachFromPanelEvent>(OnDetach);
 
             return new ActionDisposable(() =>
             {
                 target.UnregisterCallback<PointerEnterEvent>(OnPointerEnter);
                 target.UnregisterCallback<PointerLeaveEvent>(OnPointerLeave);
+                target.UnregisterCallback<DetachFromPanelEvent>(OnDetach);
 
                 pendingShow?.Pause();
                 pendingHide?.Pause();
