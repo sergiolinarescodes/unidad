@@ -1,3 +1,4 @@
+#if UNIDAD_PHYSICS3D // optional module: define UNIDAD_PHYSICS3D in Player Settings to compile
 namespace Unidad.Core.Physics
 {
     /// <summary>
@@ -14,3 +15,4 @@ namespace Unidad.Core.Physics
         public override string ToString() => $"PhysicsEntity({Value})";
     }
 }
+#endif // UNIDAD_PHYSICS3D

@@ -1,3 +1,4 @@
+#if UNIDAD_PHYSICS3D // optional module: define UNIDAD_PHYSICS3D in Player Settings to compile
 using Unidad.Core.EventBus;
 using UnityEngine;
 
@@ -73,3 +74,4 @@ namespace Unidad.Core.Physics
         }
     }
 }
+#endif // UNIDAD_PHYSICS3D

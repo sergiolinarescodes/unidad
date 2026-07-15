@@ -1,3 +1,4 @@
+#if UNIDAD_DOTS // optional module: define UNIDAD_DOTS in Player Settings to compile
 using Unidad.Core.DOTS;
 
 namespace Unidad.Core.Rendering
@@ -43,3 +44,4 @@ namespace Unidad.Core.Rendering
         }
     }
 }
+#endif // UNIDAD_DOTS

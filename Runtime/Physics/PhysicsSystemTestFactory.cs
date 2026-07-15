@@ -1,3 +1,4 @@
+#if UNIDAD_PHYSICS3D // optional module: define UNIDAD_PHYSICS3D in Player Settings to compile
 using System;
 using System.Collections.Generic;
 using Unidad.Core.Abstractions;
@@ -26,3 +27,4 @@ namespace Unidad.Core.Physics
         }
     }
 }
+#endif // UNIDAD_PHYSICS3D

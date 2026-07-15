@@ -60,19 +60,34 @@ namespace Unidad.Core.Bootstrap
         }
 
         /// <summary>
+        /// Opt-in: wrap the event bus in a RecordingEventBus and register IHistoryService.
+        /// Off by default — history is a debugging/replay tool, not a runtime dependency.
+        /// </summary>
+        protected virtual bool RecordEventHistory => false;
+
+        /// <summary>
         /// Install core framework services.
         /// Override to customize (e.g., skip history in production builds).
         /// </summary>
         protected virtual void InstallCoreServices(ContainerBuilder builder)
         {
-            // EventBus + HistoryService (with recording)
-            var historyService = new HistoryService.HistoryService();
-            historyService.StartRecording();
-            builder.AddSingleton(_ => (IHistoryService)historyService, typeof(IHistoryService));
+            // EventBus — plain by default. Opt into history recording (RecordingEventBus wrap +
+            // IHistoryService singleton) via RecordEventHistory; nothing in a shipping game reads
+            // history, so the default skips the per-publish recording cost entirely.
+            if (RecordEventHistory)
+            {
+                var historyService = new HistoryService.HistoryService();
+                historyService.StartRecording();
+                builder.AddSingleton(_ => (IHistoryService)historyService, typeof(IHistoryService));
 
-            var innerEventBus = new EventBus.EventBus();
-            var recordingEventBus = new RecordingEventBus(innerEventBus, historyService);
-            builder.AddSingleton(_ => (IEventBus)recordingEventBus, typeof(IEventBus));
+                var recordingEventBus = new RecordingEventBus(new EventBus.EventBus(), historyService);
+                builder.AddSingleton(_ => (IEventBus)recordingEventBus, typeof(IEventBus));
+            }
+            else
+            {
+                var eventBus = new EventBus.EventBus();
+                builder.AddSingleton(_ => (IEventBus)eventBus, typeof(IEventBus));
+            }
 
             // Time
             var timeProvider = new UnityTimeProvider();

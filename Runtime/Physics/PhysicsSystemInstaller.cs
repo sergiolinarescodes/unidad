@@ -1,3 +1,4 @@
+#if UNIDAD_PHYSICS3D // optional module: define UNIDAD_PHYSICS3D in Player Settings to compile
 using Reflex.Core;
 using Unidad.Core.Abstractions;
 using Unidad.Core.Bootstrap;
@@ -24,3 +25,4 @@ namespace Unidad.Core.Physics
         public ISystemTestFactory CreateTestFactory() => new PhysicsSystemTestFactory();
     }
 }
+#endif // UNIDAD_PHYSICS3D

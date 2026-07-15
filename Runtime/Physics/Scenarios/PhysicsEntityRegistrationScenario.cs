@@ -1,3 +1,4 @@
+#if UNIDAD_PHYSICS3D // optional module: define UNIDAD_PHYSICS3D in Player Settings to compile
 using System.Collections.Generic;
 using Unidad.Core.Testing;
 using UnityEngine;
@@ -154,3 +155,4 @@ namespace Unidad.Core.Physics.Scenarios
         }
     }
 }
+#endif // UNIDAD_PHYSICS3D
