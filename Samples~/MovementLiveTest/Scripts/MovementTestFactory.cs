@@ -11,6 +11,7 @@ namespace Experimental.Movement
     /// edit-mode DataDrivenScenario. GetScenarios() is therefore intentionally empty;
     /// the harness still satisfies ISystemInstaller.CreateTestFactory().
     /// </summary>
+    [NoScenariosJustified("Behavioral coverage is the Live MCP Test ('movement' scene), which exercises real physics end-to-end — edit-mode scenarios add no signal.")]
     public sealed class MovementTestFactory : ISystemTestFactory
     {
         public Type[] TestedServices => new[] { typeof(IMovementService) };

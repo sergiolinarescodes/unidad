@@ -23,6 +23,8 @@ it to `Assets/Samples/Unidad Core/<version>/Movement Live MCP Test/`.
 - `MovementLiveTest.unity` — a `SceneScope` with the bootstrap as its child, plus an ortho 2D camera.
 
 ## Notes
+- The sample expects a **`Ground` physics layer** (`MovementService` grounds via `LayerMask.GetMask("Ground")`) — add it under Tags & Layers if your project doesn't have one.
+- For the package's own tests (convention tests, `AllSystemScenariosTests`) to run in your project, add `"testables": ["com.unidad.core"]` to `Packages/manifest.json`.
 - The `[LiveTestScene]` scene path and `ScenePath` point at the default import location
   (`Assets/Samples/Unidad Core/0.1.0/Movement Live MCP Test/MovementLiveTest.unity`). If you move the
   scene or bump the package version, update those two strings in `MovementLiveTestScene.cs`.
