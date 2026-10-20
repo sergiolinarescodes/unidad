@@ -94,13 +94,13 @@ try {
     $hash = Get-CheckoutListHash $slotPath ([bool]$cfg.lane.msbuildGlobs)
     $slnx = Get-ChildItem -LiteralPath $proj -Filter '*.slnx' -ErrorAction SilentlyContinue | Select-Object -First 1
     if (Test-RegenerateNeeded $state $hash ([bool]$slnx) (Test-Path -LiteralPath "$proj/Library/MSBuild")) {
-        $code = Invoke-LaneUnity $editor (Get-UnityArgs 'regenerate' $proj "$proj/Logs/testbed-regenerate-$stamp.log") $owner $cfg.lane.capsMinutes.init $slotPath $label 'regenerate' $WaitMinutes
+        $code = Invoke-LaneUnity $editor (Get-UnityArgs 'regenerate' $proj "$proj/Logs/testbed-regenerate-$stamp.log") $owner $cfg.lane.capsMinutes.init $slotPath $label 'regenerate' $WaitMinutes $script:MsbuildEnv
         if ($code -ge 3) { exit $code }
         $slnx = Get-ChildItem -LiteralPath $proj -Filter '*.slnx' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($slnx) { $state['GeneratedListHash'] = $hash; $state['GeneratedAt'] = [DateTime]::UtcNow.ToString('o'); Write-LaneState $proj $state }
     }
     if ($slnx) {
-        $r = Invoke-Captured (Resolve-UnityDotnet $editor) @('build', $slnx.FullName, '-v:q', '-nologo') 1800 $proj
+        $r = Invoke-Captured (Resolve-UnityDotnet $editor) @('build', $slnx.FullName, '-v:q', '-nologo') 1800 $proj $script:MsbuildEnv
         if ($r.Code -ne 0) { Get-CompileErrors $r.Lines | ForEach-Object { Write-Host $_ }; Write-Host '[testbed] the precheck compile is red'; exit 1 }
     }
     $sha = (git -C $slotPath rev-parse --short HEAD).Trim()

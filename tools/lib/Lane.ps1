@@ -5,6 +5,10 @@
 . (Join-Path (Split-Path $PSScriptRoot -Parent) 'launch-guard.ps1')
 
 $script:ClaimIdleMinutes = 20
+# MSBuild mode imports neither csc.rsp nor UnityProject.Build.props for packages (Unity.Sdk 1.0.92 Sdk.props skips both
+# when CurrentPackageName is set) and defaults them to C# 9, so every MSBuild-mode process gets LangVersion from the
+# environment (an MSBuild property; U-06's C# 14 for embedded and file: packages alike).
+$script:MsbuildEnv = @{ LangVersion = '14' }
 $script:NeverCollect = '(^|/)(Library|Temp|Logs|UserSettings|Build|obj)(/|$)|\.gen\.csproj$|\.slnx$|(^|/)global\.json$|(^|/)NuGet\.config$|(^|/)Main\.EntryPoint\.csproj$'
 
 # --- pure cores ---------------------------------------------------------------------------------------------------
@@ -269,9 +273,10 @@ function Invoke-LaneUnity([string]$Editor, [string[]]$Arguments, [string]$Owner,
 }
 
 # Runs a non-Unity child (dotnet, a player) with a cap; returns @{ Code; Lines }.
-function Invoke-Captured([string]$Exe, [string[]]$Arguments, [int]$CapSeconds = 1800, [string]$Cwd) {
+function Invoke-Captured([string]$Exe, [string[]]$Arguments, [int]$CapSeconds = 1800, [string]$Cwd, [hashtable]$Environment = @{}) {
     $psi = [Diagnostics.ProcessStartInfo]::new($Exe)
     foreach ($a in $Arguments) { $psi.ArgumentList.Add($a) }
+    foreach ($k in $Environment.Keys) { $psi.Environment[$k] = $Environment[$k] }
     $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
     if ($Cwd) { $psi.WorkingDirectory = $Cwd }
     $p = [Diagnostics.Process]::Start($psi)

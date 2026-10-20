@@ -130,7 +130,7 @@ try {
     $stamp = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')
     New-Item -ItemType Directory -Force (Join-Path $proj 'Logs') | Out-Null
     function LogFile([string]$m) { "$proj/Logs/lane-$m-$stamp.log" }
-    function Unity([string]$m, [int]$cap, [string[]]$a) { Invoke-LaneUnity $editor $a $owner $cap $slotPath $target $m $WaitMinutes }
+    function Unity([string]$m, [int]$cap, [string[]]$a) { Invoke-LaneUnity $editor $a $owner $cap $slotPath $target $m $WaitMinutes $script:MsbuildEnv }
     $state = Read-LaneState $proj
 
     function Open-Msbuild([string]$m, [int]$cap) {
@@ -190,7 +190,7 @@ try {
             $slnx = { Get-ChildItem -LiteralPath $proj -Filter '*.slnx' -ErrorAction SilentlyContinue | Select-Object -First 1 }
             $r = Invoke-CompileCore $state $hash { [bool](& $slnx) -and (Test-Path -LiteralPath (Join-Path $proj 'Library/MSBuild')) } { Open-Msbuild 'regenerate' $caps.compile } {
                 Write-Host "lane: dotnet build $((& $slnx).Name)"
-                Invoke-Captured $dotnet @('build', (& $slnx).FullName, '-v:q', '-nologo') ($caps.compile * 60) $proj
+                Invoke-Captured $dotnet @('build', (& $slnx).FullName, '-v:q', '-nologo') ($caps.compile * 60) $proj $script:MsbuildEnv
             }
             if ($r.Code -ge 3) { $exitCode = $r.Code; break }
             $r.Errors | ForEach-Object { Write-Host $_ }
