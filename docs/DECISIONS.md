@@ -580,3 +580,12 @@ assembly, the surface of the spec its F1 implementer builds against, plus the me
   `-development`, `-scene`, `-release`; writes `build-report.txt`; exit 0/1).
 
 Reversible: a shape can still change by a unidad PR before `f4-release-pre1` tags.
+
+## U-145 Content and Motion edge rules
+
+2026-10-20, f1-core-content-motion (D-core-2 is U-120). Bodies follow `unidad-core` §c.5 and §c.6, with these calls the
+spec leaves open: `Easing.Evaluate` returns exactly 0 at t <= 0 (and NaN) and exactly 1 at t >= 1 for every curve, the
+Sine curves included; a `Timeline` beat added behind beats already fired fires on the next `Advance`, after them;
+`Timeline.Complete` never moves `Time` backwards; `Typewriter` compares its budget with a 1e-5 s tolerance so float
+sums of `1/CharsPerSecond` do not drop a character; `ShakeSpec.Sample` replays `DeterministicRandom(Seed)` per sample
+instead of caching, since the spec is a value type.
