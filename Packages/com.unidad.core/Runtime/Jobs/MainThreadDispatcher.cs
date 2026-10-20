@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using Unidad.Core.Abstractions;
+using Unidad.Core.Diagnostics;
 
 namespace Unidad.Core.Jobs
 {
@@ -10,14 +12,40 @@ namespace Unidad.Core.Jobs
     /// </summary>
     public sealed class MainThreadDispatcher : IMainThreadDispatcher, ITickable
     {
-        public MainThreadDispatcher(int actionsPerTick) => throw new NotImplementedException();
+        private readonly ConcurrentQueue<Action> _queue = new();
 
-        public int ActionsPerTick => throw new NotImplementedException();
+        public MainThreadDispatcher(int actionsPerTick)
+        {
+            if (actionsPerTick < 1)
+                throw new ArgumentOutOfRangeException(nameof(actionsPerTick), actionsPerTick, "At least one action per tick.");
+            ActionsPerTick = actionsPerTick;
+        }
 
-        public int Pending => throw new NotImplementedException();
+        public int ActionsPerTick { get; }
 
-        public void Post(Action action) => throw new NotImplementedException();
+        public int Pending => _queue.Count;
 
-        public void Tick(float deltaTime) => throw new NotImplementedException();
+        public void Post(Action action)
+        {
+            if (action == null) throw new ArgumentNullException(nameof(action));
+            _queue.Enqueue(action);
+        }
+
+        public void Tick(float deltaTime)
+        {
+            var budget = Math.Min(ActionsPerTick, _queue.Count);
+            for (var i = 0; i < budget && _queue.TryDequeue(out var action); i++)
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"[MainThreadDispatcher] a posted action threw; the rest still run. {ex.GetType().Name}: {ex.Message}");
+                    Log.Exception(ex);
+                }
+            }
+        }
     }
 }
