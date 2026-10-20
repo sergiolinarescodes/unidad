@@ -189,7 +189,7 @@ try {
             if ($m -ne 0 -or $p -ne 0) { Write-Host 'lane: metas or asmdef parity red'; $exitCode = 1; break }
             $hash = Get-CheckoutListHash $slotPath ([bool]$cfg.lane.msbuildGlobs)
             $slnx = { Get-ChildItem -LiteralPath $proj -Filter '*.slnx' -ErrorAction SilentlyContinue | Select-Object -First 1 }
-            $r = Invoke-CompileCore $state $hash { [bool](& $slnx) -and (Test-Path -LiteralPath (Join-Path $proj 'Library/MSBuild')) } { Open-Msbuild 'regenerate' $caps.compile } {
+            $r = Invoke-CompileCore $state $hash { $s = & $slnx; [bool]$s -and (Test-SlnxComplete $s.FullName) -and (Test-Path -LiteralPath (Join-Path $proj 'Library/MSBuild')) } { Open-Msbuild 'regenerate' $caps.compile } {
                 Write-Host "lane: dotnet build $((& $slnx).Name)"
                 Invoke-Captured $dotnet @('build', (& $slnx).FullName, '-v:q', '-nologo') ($caps.compile * 60) $proj $script:MsbuildEnv
             }

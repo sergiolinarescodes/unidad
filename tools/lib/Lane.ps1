@@ -86,6 +86,12 @@ function Get-CheckoutListHash([string]$Root, [bool]$MsbuildGlobs) {
     Get-ListHash @(git -C $Root -c core.quotepath=off ls-files -- @patterns)
 }
 
+# A .slnx is usable only while every project it lists exists (a purged .gen.csproj leaves a dangling entry).
+function Test-SlnxComplete([string]$Slnx) {
+    $dir = Split-Path -Parent $Slnx
+    @(([xml](Get-Content -Raw -LiteralPath $Slnx)).SelectNodes('//Project') | Where-Object { !(Test-Path -LiteralPath (Join-Path $dir $_.Path)) }).Count -eq 0
+}
+
 function Test-RegenerateNeeded($State, [string]$NewHash, [bool]$SlnxExists, [bool]$MsbuildDirExists = $true) {
     !$SlnxExists -or !$MsbuildDirExists -or !$State -or $State.GeneratedListHash -ne $NewHash
 }

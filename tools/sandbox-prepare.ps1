@@ -9,7 +9,8 @@ if (!(Test-Path -LiteralPath $src)) {
     Write-Host 'sandbox-prepare: no Movement sample yet'
     exit 0
 }
-robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /R:1 /W:1 | Out-Null
+# /XF: /MIR would purge the .gen.csproj files MSBuild mode writes, and the lane would build a .slnx without them.
+robocopy $src $dst /MIR /XF *.gen.csproj /NFL /NDL /NJH /NJS /R:1 /W:1 | Out-Null
 if ($LASTEXITCODE -ge 8) { Write-Host "sandbox-prepare: robocopy failed ($LASTEXITCODE)"; exit 1 }
 Write-Host "sandbox-prepare: Movement sample -> Sandbox/Assets/Samples/Movement"
 exit 0
