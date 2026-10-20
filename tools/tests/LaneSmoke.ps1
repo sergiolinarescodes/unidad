@@ -65,6 +65,9 @@ try {
     Assert ($ok -and (Test-RegenerateNeeded @{ GeneratedListHash = $before } $after $true) -and !(Test-RegenerateNeeded @{ GeneratedListHash = $after } $after $true) -and
             (Test-RegenerateNeeded @{ GeneratedListHash = $after } $after $false)) 'Regenerate_NewCsChangesTheListHash'
 
+    Put "$repo/Assets/A.asmdef" '{ "name": "A", "references": [ "B" ] }'; G -C $repo add Assets/A.asmdef
+    Assert ((Get-CheckoutListHash $repo $true) -ne $beforeGlob) 'Regenerate_AsmdefReferenceChangeChangesTheListHash'
+
     $script:regenerated = 0
     $fakeBuild = {   # a fake MSBuild-mode build: a CS error for every .cs with a dangling '= }'
         $lines = @(Get-ChildItem -Recurse "$repo/Assets" -Filter *.cs | Where-Object { (Get-Content -Raw $_.FullName) -match '= \}' } |

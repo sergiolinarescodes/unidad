@@ -81,9 +81,10 @@ function Get-ListHash([string[]]$Paths) {
 
 # The asmdef/.cs list of a checkout (U-61): a new .cs regenerates unless the generated projects glob (C7).
 function Get-CheckoutListHash([string]$Root, [bool]$MsbuildGlobs) {
-    $patterns = @('*.asmdef', '*.asmref', '*manifest.json')
-    if (!$MsbuildGlobs) { $patterns += '*.cs' }
-    Get-ListHash @(git -C $Root -c core.quotepath=off ls-files -- @patterns)
+    # -s adds each blob id: an asmdef whose references change regenerates too (its .gen.csproj would keep the old ones)
+    $lines = @(git -C $Root -c core.quotepath=off ls-files -s -- '*.asmdef' '*.asmref' '*manifest.json')
+    if (!$MsbuildGlobs) { $lines += @(git -C $Root -c core.quotepath=off ls-files -- '*.cs') }
+    Get-ListHash $lines
 }
 
 # A .slnx is usable only while every project it lists exists (a purged .gen.csproj leaves a dangling entry).
