@@ -61,6 +61,10 @@ namespace Unidad.Core.Ticking
         /// exactly that interval. False if the key is already registered.
         /// </summary>
         public bool Add(object key, Action<float> step, TickGroup group, float rateHz, string name)
+            => Add(key, step, group, rateHz, name, runWhilePaused: false);
+
+        /// <summary>As the five-argument Add; a <paramref name="runWhilePaused"/> entry keeps running while paused, on the unscaled delta.</summary>
+        public bool Add(object key, Action<float> step, TickGroup group, float rateHz, string name, bool runWhilePaused)
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
             if (step == null) throw new ArgumentNullException(nameof(step));
@@ -68,17 +72,19 @@ namespace Unidad.Core.Ticking
                 throw new ArgumentOutOfRangeException(nameof(rateHz), rateHz, "A tick rate is 0 (every frame) or positive.");
             if (IndexOf(key) >= 0) return false;
 
-            _entries.Add(new Entry(key, step, group, rateHz > 0f ? 1.0 / rateHz : 0.0, name ?? key.GetType().Name, _sequence++));
+            _entries.Add(new Entry(key, step, group, rateHz > 0f ? 1.0 / rateHz : 0.0, name ?? key.GetType().Name, _sequence++,
+                                   runWhilePaused));
             _dirty = true;
             return true;
         }
 
-        /// <summary>As the five-argument Add; a <paramref name="runWhilePaused"/> entry keeps running while paused, on the unscaled delta.</summary>
-        public bool Add(object key, Action<float> step, TickGroup group, float rateHz, string name, bool runWhilePaused)
-            => throw new NotImplementedException();
-
         /// <summary>Registers <paramref name="binding"/> keyed by its tickable.</summary>
-        public bool Add(TickBinding binding) => throw new NotImplementedException();
+        public bool Add(TickBinding binding)
+        {
+            if (binding == null) throw new ArgumentNullException(nameof(binding));
+            var tickable = binding.Tickable;
+            return Add(tickable, tickable.Tick, binding.Group, binding.RateHz, tickable.GetType().Name, binding.RunWhilePaused);
+        }
 
         public bool Remove(object key)
         {
@@ -93,7 +99,20 @@ namespace Unidad.Core.Ticking
         public bool Contains(object key) => IndexOf(key) >= 0;
 
         /// <summary>Runs every entry once (or its due fixed-rate steps), group by group.</summary>
-        public void Step(float deltaTime)
+        public void Step(float deltaTime) => Step(deltaTime, deltaTime, false);
+
+        /// <summary>
+        /// Runs every group once. While <paramref name="paused"/>, only runWhilePaused entries run (an entry skipped keeps its
+        /// accumulator); those always receive <paramref name="unscaledDeltaTime"/>, the rest <paramref name="deltaTime"/>.
+        /// </summary>
+        public void Step(float deltaTime, float unscaledDeltaTime, bool paused)
+            => StepEntries(null, deltaTime, unscaledDeltaTime, paused);
+
+        /// <summary>As <see cref="Step(float, float, bool)"/>, for the entries of one <paramref name="group"/> only (one PlayerLoop phase).</summary>
+        public void StepGroup(TickGroup group, float deltaTime, float unscaledDeltaTime, bool paused)
+            => StepEntries(group, deltaTime, unscaledDeltaTime, paused);
+
+        private void StepEntries(TickGroup? only, float deltaTime, float unscaledDeltaTime, bool paused)
         {
             if (_dirty) Rebuild();
             var order = _order;
@@ -101,13 +120,16 @@ namespace Unidad.Core.Ticking
             {
                 var entry = order[i];
                 if (entry.Removed) continue;
+                if (only.HasValue && entry.Group != only.Value) continue;
+                if (paused && !entry.RunWhilePaused) continue;
+                var delta = entry.RunWhilePaused ? unscaledDeltaTime : deltaTime;
                 if (entry.Interval <= 0.0)
                 {
-                    Run(entry, deltaTime);
+                    Run(entry, delta);
                     continue;
                 }
 
-                entry.Accumulator += deltaTime;
+                entry.Accumulator += delta;
                 var steps = 0;
                 while (entry.Accumulator >= entry.Interval && steps < MaxCatchUpSteps && !entry.Removed)
                 {
@@ -118,15 +140,6 @@ namespace Unidad.Core.Ticking
                 if (entry.Accumulator >= entry.Interval) entry.Accumulator %= entry.Interval;
             }
         }
-
-        /// <summary>
-        /// Runs every group once. While <paramref name="paused"/>, only runWhilePaused entries run (an entry skipped keeps its
-        /// accumulator); those always receive <paramref name="unscaledDeltaTime"/>, the rest <paramref name="deltaTime"/>.
-        /// </summary>
-        public void Step(float deltaTime, float unscaledDeltaTime, bool paused) => throw new NotImplementedException();
-
-        /// <summary>As <see cref="Step(float, float, bool)"/>, for the entries of one <paramref name="group"/> only (one PlayerLoop phase).</summary>
-        public void StepGroup(TickGroup group, float deltaTime, float unscaledDeltaTime, bool paused) => throw new NotImplementedException();
 
         private void Run(Entry entry, float deltaTime)
         {
@@ -170,9 +183,11 @@ namespace Unidad.Core.Ticking
 
         private sealed class Entry
         {
-            public Entry(object key, Action<float> step, TickGroup group, double interval, string name, long sequence)
+            public Entry(object key, Action<float> step, TickGroup group, double interval, string name, long sequence,
+                         bool runWhilePaused)
             {
                 Key = key; Step = step; Group = group; Interval = interval; Name = name; Sequence = sequence;
+                RunWhilePaused = runWhilePaused;
             }
 
             public object Key { get; }
@@ -181,6 +196,7 @@ namespace Unidad.Core.Ticking
             public double Interval { get; }
             public string Name { get; }
             public long Sequence { get; }
+            public bool RunWhilePaused { get; }
             public double Accumulator;
             public bool Removed;
         }
