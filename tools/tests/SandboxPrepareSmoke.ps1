@@ -19,6 +19,13 @@ try {
     Assert (Test-Path -LiteralPath "$dst/A.cs") 'Prepare_CopiesSample'
     Assert (!(Test-Path -LiteralPath "$dst/Stale.cs")) 'Prepare_PurgesStaleFiles'
     Assert (Test-Path -LiteralPath "$dst/Unidad.Samples.Movement.gen.csproj") 'Prepare_KeepsGeneratedCsproj'
+
+    . (Join-Path (Split-Path $PSScriptRoot -Parent) 'lib/Lane.ps1')
+    $slnx = "$Temp/Sandbox/Sandbox.slnx"
+    Put $slnx '<Solution><Project Path="Assets/Samples/Movement/Logic/Unidad.Samples.Movement.gen.csproj" /></Solution>'
+    $complete = Test-SlnxComplete $slnx
+    Remove-Item -LiteralPath "$dst/Unidad.Samples.Movement.gen.csproj"
+    Assert ($complete -and !(Test-SlnxComplete $slnx)) 'SlnxComplete_FalseWhenAListedProjectIsMissing'
 } finally {
     Remove-Item -LiteralPath $Temp -Recurse -Force -ErrorAction SilentlyContinue
 }
