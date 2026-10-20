@@ -13,7 +13,7 @@
     <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEngine/UnityEngine.*Module.dll" Private="false" />
     <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEngine/Unity.Scripting.dll" Private="false" />
     <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEngine/UnityEditor.*Module.dll" Private="false" Condition="'$(IsEditorCheck)'=='true'" />
-    <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEditor.dll" Private="false" Condition="'$(IsEditorCheck)'=='true'" />
+    <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEngine/UnityEditor.dll" Private="false" Condition="'$(IsEditorCheck)'=='true'" />
     <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEditor.Graphs.dll" Private="false" Condition="'$(IsEditorCheck)'=='true'" />
     <Reference Include="$(RefPack)/*.dll" Exclude="$(RefPack)/Unidad.*.dll" Private="false" Condition="'$(HasRefPack)'=='true'" />
   </ItemGroup>
