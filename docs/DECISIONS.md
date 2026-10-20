@@ -581,6 +581,53 @@ assembly, the surface of the spec its F1 implementer builds against, plus the me
 
 Reversible: a shape can still change by a unidad PR before `f4-release-pre1` tags.
 
+## U-200 One sync is two PRs
+
+2026-10-20, f1-sync-verify (sync-unidad spec, sync-split). `sync-unidad-<k>-up` opens the replay PR on unidad `main` and
+ends; the loop merges it. `sync-unidad-<k>-down` starts from the merged `origin/main`, tags, carries into the game, boots
+it (C14) and opens the game's carry PR. Why: a task waiting 30+ minutes on a merger would hold a slot and the editor lock.
+
+## U-201 Boot strictness per run
+
+2026-10-20, f1-sync-verify (sync-strict, amended by D-79). Run 1 boots with `strict=false` and records
+`stubs.winning=<n>` in the PR body (`sync-verify -Phase Down -Report <file>` prints it). From run 2 on, and at ship, the
+boot is strict: `sync-verify ... -Strict` needs `strict=true` and `stubs.winning=0`. Every run needs `boot=ok`, `errors=0`.
+
+## U-202 What a carry PR may touch
+
+2026-10-20, f1-sync-verify (sync-carry-scope, amended by U-62 and D-83). `Packages/com.unidad.{core,modules,unity}/**`,
+`docs/SOURCES.md`, `dotnet/Unidad.*/**` and a top-level `dotnet/*.slnx` line (only when a framework asmdef changed), the
+analyzer path line of `dotnet/Directory.Build.props`, and `tools/**` minus `tools/repo.json`, `tools/meta-roots.txt` and the
+game's `repo.json` `gameTools` (entries relative to `tools/`, globs allowed). `sync-verify -Phase Down` check D4 enforces it.
+
+## U-203 A carry PR needs no Divergences row
+
+2026-10-20, f1-sync-verify (sync-carry-exempt). `check-tree`'s "framework edit without a Divergences row" rule skips a PR
+whose `docs/SOURCES.md` diff changes a line inside the `carry-unidad` block; the reviewer runs `sync-verify -Phase Down`
+instead (D1 tag + SHA, D2 drift covered by remaining rows, D3 replayed rows gone, D4 scope).
+
+## U-204 The Sandbox gate shares the one editor lock
+
+2026-10-20, f1-sync-verify (sync-sandbox-lock). `sandbox-gate.ps1` starts Unity only through `tools/unity-lane.ps1`
+against unidad's `repo.json`, so it takes the same lock as every lane call (U-55, U-118); it never implements a second one.
+
+## U-205 Changes that cannot be replayed go upstream first
+
+2026-10-20, f1-sync-verify (sync-upstream-first). A Divergences row may not name the analyzer DLL or a `package.json`
+`version`/`dependencies` field (U-116). When a game check needs one, the fix is a unidad PR, then a sync with zero rows
+(`-up` skipped; `-down` tags and carries).
+
+## U-206 The up PR adds no game names
+
+2026-10-20, f1-sync-verify (sync-no-game-names). An added line under `Packages/` matching `\bCds\b|\bCDS\b|\bcds\.`
+stops the run; the row's author generalises it in the game first. `sync-verify -Phase Up` check U5 diffs the tag against
+the previous `v2.*` tag.
+
+## U-207 No project build under the scratchpad
+
+2026-10-20, f1-sync-verify (sync-scratch-paths). The session scratchpad path contains `--`, which breaks MSBuild mode.
+Patch files and reports may live there; worktrees, Sandbox copies and players never do. Smoke tests build their
+throwaway repos under `[IO.Path]::GetTempPath()`.
 ## U-194 Models are a registry the game feeds
 
 2026-10-20, f1-adapter-motion-models-editor (P-A4). `ModelEntry(Id, AssetKey, Scale, Kind)` rows come from multi-bound
