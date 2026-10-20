@@ -14,6 +14,34 @@ namespace Unidad.Core.Registry
         /// </summary>
         public static OrderedRegistry<T> ById<T>(IEnumerable<T> handlers, Func<T, string> id, StubLedger ledger = null, string what = null)
             where T : class
-            => throw new NotImplementedException();
+            => Fold(handlers, id, ledger, what ?? typeof(T).Name);
+
+        internal static OrderedRegistry<T> Fold<T>(IEnumerable<T> handlers, Func<T, string> idOf, StubLedger ledger, string what)
+        {
+            if (handlers == null) throw new ArgumentNullException(nameof(handlers));
+            if (idOf == null) throw new ArgumentNullException(nameof(idOf));
+            var registry = new OrderedRegistry<T>();
+            foreach (var handler in handlers)
+            {
+                var id = idOf(handler);
+                if (string.IsNullOrWhiteSpace(id))
+                    throw new InvalidOperationException($"{typeof(T).Name} '{handler?.GetType().FullName}' has an empty id.");
+                if (!registry.TryGet(id, out var existing))
+                {
+                    registry.Add(id, handler);
+                    continue;
+                }
+                bool existingStub = existing is IStub, newStub = handler is IStub;
+                if (newStub && !existingStub) continue;
+                if (!newStub && !existingStub)
+                    throw new InvalidOperationException(
+                        $"{typeof(T).Name} id '{id}' is bound twice: {existing.GetType().FullName} and {handler.GetType().FullName}.");
+                registry.Replace(id, handler);
+            }
+            if (ledger != null)
+                for (var i = 0; i < registry.Count; i++)
+                    if (registry[i] is IStub) ledger.Record($"{what}:{registry.Ids[i]}");
+            return registry;
+        }
     }
 }
