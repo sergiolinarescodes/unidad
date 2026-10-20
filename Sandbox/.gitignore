@@ -1,0 +1,17 @@
+# Everything Unity generates in the Sandbox (U-46). ProjectSettings/*.asset and Packages/packages-lock.json are committed.
+Library/
+Temp/
+Logs/
+UserSettings/
+Build/
+obj/
+Assets/Samples/
+Assets/Samples.meta
+Assets/Scenes/
+Assets/Scenes.meta
+*.slnx
+*.sln
+*.csproj
+global.json
+NuGet.config
+Main.EntryPoint.csproj

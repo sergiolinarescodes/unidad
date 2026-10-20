@@ -581,6 +581,45 @@ assembly, the surface of the spec its F1 implementer builds against, plus the me
 
 Reversible: a shape can still change by a unidad PR before `f4-release-pre1` tags.
 
+## C1 (framework): passed
+
+2026-10-20, `f1-tooling-lane`. The first Sandbox compile (lane `-Compile` and `-Bee` at `75f858f`, Unity 7000.0.0a10)
+built `Unidad.Core` (`noEngineReferences`, `using System.Text.Json` in `Content/ContentJson.cs`) and `Unidad.Save` with
+no extra reference, in MSBuild mode and in Bee. The install ships
+`Data/BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Text.Json.dll` (10.0.0.0; runtime 10.0.8), which every
+netstandard2.1 assembly resolves. So `f2-json-fallback` is skipped (U-51, D-75); the player half stays with `11-base`.
+
+## f1-tooling-lane: MSBuild mode takes C# 14 from the environment
+
+2026-10-20, `f1-tooling-lane`. Unity.Sdk 1.0.92 (`Sdk/Sdk.props`) imports `UnityProject.Build.props` and
+`Directory.Build.props` only for projects outside packages, ignores `csc.rsp`, and defaults `LangVersion` to 9.0. Every
+`com.unidad.*` assembly is a package (embedded or `file:`), so the first `-enable-msbuild` open failed with CS8773 on
+records and file-scoped namespaces. The lane and the testbed therefore start every MSBuild-mode process (the batch
+open and `dotnet build <project>.slnx`) with the environment variable `LangVersion=14`, an MSBuild property that every
+generated project picks up (`tools/lib/Lane.ps1` `$MsbuildEnv`). Bee keeps reading each assembly's `csc.rsp`, and the
+Sandbox still ships `UnityProject.Build.props` for its own `Assets/` asmdef. Games inherit this through the toolset
+(U-62); a user who builds a slot's slnx by hand sets the same variable.
+
+## f1-tooling-lane: Lane specifics
+
+2026-10-20, `f1-tooling-lane` (U-41, U-42, U-49, U-60, U-61 as built).
+- State: slot locks `<home>/locks/slots/<repo>-<slot>.lock` (a LockRecord, stale on a dead or reused PID), claims beside
+  them as `.claim` (`ClaimedBy`, `LastUsed`; a claim with no lane call by its branch for 20 min is released by whoever
+  reads it), `LaneState` in `<project>/Library/.lane-state.json`, runs in `<home>/guard/runs/`, STOP in `<home>/guard/STOP`.
+- Slot choice: a slot claimed by the branch, then a free unclaimed one, then (`-Compile` only) a claimed one, borrowed
+  under the slot lock. A missing slot is created (detached worktree) and opened once in MSBuild mode by any mode.
+- `-Collect <roots>` takes roots relative to the Unity project, comma-separated; `-Collect default` means
+  `lane.collectRoots`. It refuses to copy into the main checkout. Files Unity creates on first import (URP's
+  `UniversalRenderPipelineGlobalSettings.asset`, `DefaultVolumeProfile.asset`, which `GraphicsSettings.asset`
+  references) are collected and committed with Unity's own metas.
+- The refpack copies only `Library/ScriptAssemblies` package DLLs (U-59 selection); engine modules stay in the install's
+  `Data/Managed`, which the Check projects reference directly, so copying them would duplicate those references.
+- The testbed adds `--set report=<TEMP>/<repo>-report.txt` only when `lane.playerBootArgs` uses `{report}` (a key the
+  game declares); unidad's launch keys have no `report`. `-Start` is emitted only when given.
+- C7 observation for unidad: the generated `*.gen.csproj` glob `**/*.cs`, so `lane.msbuildGlobs` could be `true`; the
+  repo keeps `false` (a new `.cs` regenerates, which costs about 30 s and is always correct) until `11-base` records C7.
+- Meta templates (U-47): `Lane.CaptureMetaTemplates` in the Sandbox re-captured `folder cs asmdef asmref text default uxml
+  uss tss shader hlsl cginc compute package`; all fourteen equal the seed's byte for byte (after line endings).
 ## U-187 One overlay PanelSettings, layers by document sort order
 
 2026-10-20, f1-adapter-hosts-ui (P-A3). Every framework panel is a `UIDocument` on the one overlay PanelSettings

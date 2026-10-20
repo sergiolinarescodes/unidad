@@ -1,0 +1,6 @@
+<Project>
+  <!-- MSBuild compilation mode (-enable-msbuild) ignores csc.rsp: C# 14 for every generated project (probe Q2). -->
+  <PropertyGroup>
+    <LangVersion>14</LangVersion>
+  </PropertyGroup>
+</Project>
