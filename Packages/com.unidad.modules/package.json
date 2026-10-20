@@ -1,10 +1,10 @@
 {
   "name": "com.unidad.modules",
-  "version": "2.0.0-pre.2",
+  "version": "2.0.0-pre.3",
   "displayName": "Unidad Modules",
   "unity": "7000.0",
   "description": "Engine-free generic modules of the Unidad framework: Flow, Save, Text, Audio, Launch.",
   "dependencies": {
-    "com.unidad.core": "2.0.0-pre.2"
+    "com.unidad.core": "2.0.0-pre.3"
   }
 }

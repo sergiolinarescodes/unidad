@@ -11,6 +11,7 @@ rewrite them.
 | unidad 0.1.0 | ad1524f | the picoCAD import half (`Editor/PicoCad`, `ModelCatalog`) ported into `com.unidad.unity`; `Tools~/`, `Skills~/`, `Documentation~/model-pipeline/` kept byte-identical |
 | 10-unidad-godot | 977cacd | `Samples/Movement` ported to `com.unidad.unity/Samples~/Movement` (Logic + View): engine-free service, Fixed-group TickBinding, StageBootstrap, UI Toolkit host, Input System bridge |
 | 11#1 | `tools/unity-lane.ps1` | sync-unidad-1-up (11 at 7ac90d5): `-Status` names its claim record `$slotClaim` (`$claim` bound to the `-Claim` switch, case-blind, and crashed whenever a slot was claimed); the postCompileCheck method probe greps `*.cs` only (a spec quoting the signature ran a missing method) |
+| 11#23 | `tools/lib/Lane.ps1`, `tools/tests/LaneSmoke.ps1` | sync-unidad-2-up (11 at df06a5d): `Get-CheckoutListHash` hashed only the asmdef file names, so an asmdef whose `references` changed kept a stale `.gen.csproj` and `-Compile` failed with CS0234; it now hashes each asmdef/asmref/manifest blob id (`ls-files -s`) |
 
 ## Divergences
 
