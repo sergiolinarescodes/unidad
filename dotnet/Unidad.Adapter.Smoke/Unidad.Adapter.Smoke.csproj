@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Runtime/Pure holds the adapter's engine-free files: they compile into Unidad.Adapter in Unity and here, so the adapter gets dotnet smoke tests. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AdapterDir>$(RepoRoot)Packages/com.unidad.unity</AdapterDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(AdapterDir)/Runtime/Pure/**/*.cs" />
+    <Compile Include="$(AdapterDir)/Tests~/**/*.cs" />
+    <Compile Include="$(AdapterDir)/Samples~/Movement/Logic/**/*.cs" Exclude="$(AdapterDir)/Samples~/Movement/Logic/**/AssemblyInfo.cs;$(AdapterDir)/Samples~/Movement/Logic/**/Polyfills.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Unidad.Core/Unidad.Core.csproj" />
+    <ProjectReference Include="../Unidad.Launch/Unidad.Launch.csproj" />
+    <ProjectReference Include="../Unidad.Flow/Unidad.Flow.csproj" />
+    <ProjectReference Include="../Unidad.Text/Unidad.Text.csproj" />
+    <ProjectReference Include="../Unidad.Save/Unidad.Save.csproj" />
+    <ProjectReference Include="../Unidad.Audio/Unidad.Audio.csproj" />
+  </ItemGroup>
+</Project>

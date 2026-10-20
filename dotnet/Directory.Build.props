@@ -1,0 +1,30 @@
+<Project>
+  <PropertyGroup>
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))/</RepoRoot>
+    <LangVersion>14</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Optimize>true</Optimize>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <IsSmoke Condition="$(MSBuildProjectName.EndsWith('.Smoke'))">true</IsSmoke>
+    <IsCheck Condition="$(MSBuildProjectName.EndsWith('.Check'))">true</IsCheck>
+    <IsEditorCheck Condition="$(MSBuildProjectName.EndsWith('.Editor.Check'))">true</IsEditorCheck>
+    <!-- Check projects share dotnet/Check/, so each gets its own obj/ (restore state is per project). -->
+    <BaseIntermediateOutputPath Condition="'$(IsCheck)'=='true'">$(MSBuildProjectDirectory)/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <UnityEditorDir Condition="'$(UnityEditorDir)'==''">$(UNIDAD_UNITY_EDITOR)</UnityEditorDir>
+    <UnityEditorDir Condition="'$(UnityEditorDir)'==''">C:/Program Files/Unity/Hub/Editor/7000.0.0a10/Editor</UnityEditorDir>
+    <RefPackPointer>$(LOCALAPPDATA)/Unidad/refpacks/unidad/current.txt</RefPackPointer>
+    <RefPack Condition="Exists('$(RefPackPointer)')">$([System.IO.File]::ReadAllText('$(RefPackPointer)').Trim())</RefPack>
+    <HasRefPack Condition="'$(RefPack)'!='' And Exists('$(RefPack)')">true</HasRefPack>
+    <SystemTextJsonVersion>10.0.8</SystemTextJsonVersion>
+    <NUnitVersion>3.14.0</NUnitVersion>
+    <NUnitAdapterVersion>4.6.0</NUnitAdapterVersion>
+    <TestSdkVersion>17.11.1</TestSdkVersion>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IsSmoke)'!='true'">
+    <ProjectReference Include="$(RepoRoot)analyzers/Unidad.Analyzers/Unidad.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

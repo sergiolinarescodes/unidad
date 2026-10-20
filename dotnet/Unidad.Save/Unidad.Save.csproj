@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <SourceDir>Packages/com.unidad.modules/Save</SourceDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Unidad.Core/Unidad.Core.csproj" />
+    <ProjectReference Include="../Unidad.Launch/Unidad.Launch.csproj" />
+  </ItemGroup>
+</Project>

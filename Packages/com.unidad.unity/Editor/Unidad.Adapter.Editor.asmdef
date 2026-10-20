@@ -1,0 +1,25 @@
+{
+    "name": "Unidad.Adapter.Editor",
+    "rootNamespace": "Unidad.Adapter.Editor",
+    "references": [
+        "Unidad.Core",
+        "Unidad.Launch",
+        "Unidad.Flow",
+        "Unidad.Text",
+        "Unidad.Save",
+        "Unidad.Audio",
+        "Unidad.Adapter",
+        "glTFast"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

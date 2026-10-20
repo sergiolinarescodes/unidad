@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <SourceDir>Packages/com.unidad.modules/Flow/Tests~</SourceDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Unidad.Flow/Unidad.Flow.csproj" />
+  </ItemGroup>
+</Project>

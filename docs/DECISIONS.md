@@ -446,3 +446,137 @@ the refpack is refreshed from the loop slot, and `worktree-done.ps1 -Sweep` runs
 and kills only the PIDs it started, by their captured PID. An unregistered `Unity.exe` is the user's and is never
 touched, counted or killed. The STOP file (`<home>/guard/STOP`, `f1-tooling-lane`) blocks every lane mode, the
 testbed and Phase B's lane calls.
+## U-120 Content lives in `Unidad.Core.Content`
+
+2026-10-20, f0-contracts (P1, settled by U-50). `IContentSource`, `ContentJson`, `ContentException`, `ContentPath`,
+`IContentCheck`, `ContentReport` and the three sources are core types. Save, Audio's catalogue, the adapter's models and
+every game module read content without referencing `Unidad.Text`.
+
+## U-121 Single bindings carry an order
+
+2026-10-20, f0-contracts (P2). The highest order wins a contract; among equal orders the later registration (10's rule).
+`Order.Stub = int.MinValue`, `Order.Default = 0`, `AddStub` = `AddSingleton(factory, Order.Stub, contracts)`, marker
+`IStub`. `Container.StubbedContracts()` lists the contracts a stub still wins (from registrations, no instantiation) and
+`Container.WinningStubs` names them plus the keyed ids `ResolveKeyed` resolved to a stub; `StubLedger` and
+`HandlerRegistry.ById` serve content-named handlers. The adapter logs them after the stage hosts bind and fails the boot
+under `--set strict=true`.
+
+## U-122 TickGroup keeps 10's ordinals and adds Fixed
+
+2026-10-20, f0-contracts (P3). Input 0, Simulation 1, Streaming 2, Presentation 3, Rendering 4, Fixed 5. A
+`RunWhilePaused` entry always receives the unscaled delta; every other entry is skipped while paused, its accumulator
+untouched (`TickSchedule.Step(dt, unscaledDt, paused)`, and `StepGroup` for one PlayerLoop phase).
+
+## U-123 F0 writes the dependency kernel; F1 fills the rest
+
+2026-10-20, f0-contracts (P4). Real bodies: DI with ordered single bindings and stubs, discovery, EventBus,
+SystemServiceBase, OrderedRegistry, StateMachine, DeterministicRandom, SeedMix (+ `Salt`), SeedSource, Log,
+CompositeDisposable, ContentJson with `Catalogue`, Directory/MemoryContentSource, `ContentPath.Validate/Matches`,
+TickBinding, ReadModelCell, StubLedger, the attributes, and the members `TickSchedule` already had in 10. Every other body
+throws `NotImplementedException`; the F1 tasks fill them and never rewrite the kernel (bug fixes only).
+
+## U-124 Dead code is not carried
+
+2026-10-20, f0-contracts (P5, with unidad-core's D-core-5). Not declared: `Timer`, `Inventory`, `Progression`, `Resource`,
+`IRegistry`/`RegistryBase`, `CommandQueue`, `NullEventBus`, `EventBusFactory`, `Debugger/DebugModeService`,
+`IDebugProvider`, `Testing/*`, every `*TestFactory`, `ISystemInstaller.CreateTestFactory`, `JitWarmup`,
+`IDebugUi.RichReadout`/`ClickMode`, `HudLines`, the parameterless `InstallerDiscovery.FindInstallerTypes()` and the
+`--movie --pause-at --vsync` flags. `f4-release-pre1` lists them in `docs/MIGRATING-0.x.md`.
+
+## U-125 Motion targets are passed, never registered
+
+2026-10-20, f0-contracts (P6). `IMotionTarget<T>` instances are handed to `IMotionRunner.Play`; a game's View assembly
+keeps its own (TMP colour and scale). There is no container entry for them.
+
+## U-126 No adapter content source and no MainThreadQueue
+
+2026-10-20, f0-contracts (P7). The adapter binds core's `DirectoryContentSource` over `streamingAssetsPath/Content` and
+drains core's `MainThreadDispatcher` first in the Input group. No duplicate types.
+
+## U-127 glTFast is not a package dependency
+
+2026-10-20, f0-contracts (P8). `com.unidad.unity`'s package.json does not list `com.unity.cloud.gltfast`; the
+`Unidad.Adapter.Editor` asmdef references `glTFast` by name and the consumer's manifest carries the package. The
+framework resolves offline either way.
+
+## U-128 Nullable is disabled in every framework assembly
+
+2026-10-20, f0-contracts (P9). No `-nullable` in csc.rsp and `<Nullable>disable</Nullable>` in the sidecar, so ported
+`?` annotations on reference types are removed (CS8632 would fail the warnings-as-errors build).
+
+## U-129 Analyzer markers match by simple name
+
+2026-10-20, f0-contracts (P10). `DeterministicSimulation`, `BurstSubset`, `ProcessOverride`, `UnidadModule` and
+`AutoStaticsCleanup` are matched by name in any namespace. `Unidad.Core.Abstractions` declares all but `UnidadModule`
+(in `Unidad.Core.Bootstrap`); an assembly that references nothing (`Cds.Sim`) may declare its own copies.
+
+## U-130 Check projects compile the adapter without Unity
+
+2026-10-20, f0-contracts (P11, U-59). `dotnet/Unidad.ViewCheck.slnx` builds `Unidad.Adapter` and `Unidad.Adapter.Editor`
+against `Data/Managed/UnityEngine/UnityEngine.*Module.dll` and `Unity.Scripting.dll` (the editor check adds
+`UnityEngine/UnityEditor.*Module.dll`, `Data/Managed/UnityEditor.dll` and `UnityEditor.Graphs.dll`), plus the refpack when
+`%LOCALAPPDATA%/Unidad/refpacks/unidad/current.txt` names one (its `Unidad.*` DLLs excluded). Until a refpack exists,
+`Runtime/Input/**` and `Editor/PicoCad/**` are left out: the Input System and glTFast are package DLLs only a Unity import
+yields. The F0 surface uses neither, so F0 builds with no Unity process.
+
+## U-131 The 0.1.0 root package is gone
+
+2026-10-20, f0-contracts (P12, done by `u0-release-cut`, U-52). The 2.0 packages live only under `Packages/`; the root
+has no `package.json`.
+
+## U-132 F0 writes md5-of-path metas
+
+2026-10-20, f0-contracts (P13, U-11). Every file and folder under `Packages/com.unidad.*` outside `~` folders has a meta
+whose guid is the first 32 hex of md5(repo-relative path, forward slashes), from the minimal templates (`.cs`
+MonoImporter, folder, `.asmdef` AssemblyDefinitionImporter, `package.json` PackageManifestImporter, `csc.rsp`
+DefaultImporter). Package roots have none. `f3-adapter-sandbox-gate` re-renders them from the captured templates.
+
+## U-133 System.Text.Json stays off the public surface outside Save
+
+2026-10-20, f0-contracts (P14). `ContentJson`'s options are internal; the only System.Text.Json types on the public
+surface are `JsonNode`, `JsonObject` and `JsonArray` in `Unidad.Save`. If C1 fails, only Save's participant signatures move.
+
+## U-134 ModifierStack sorts stably
+
+2026-10-20, f0-contracts (F0-1; `f1-core-runtime` implements). Priority descending, then insertion order; 10 used an
+unstable `List.Sort`.
+
+## U-135 Autosave counts tick time
+
+2026-10-20, f0-contracts (F0-2; `f1-modules` implements). The periodic autosave adds the `Tick(dt)` it is given while a
+settled predicate holds, never the wall clock, so a pause never counts.
+
+## U-136 Save keeps unknown sections
+
+2026-10-20, f0-contracts (F0-3; `f1-modules` implements). Sections of a loaded slot that no participant claims are written
+back on every save, so a disabled mod's section survives.
+
+## U-137 Save and autosave are ticked
+
+2026-10-20, f0-contracts (F0-4; `f1-adapter-hosts-ui` implements). `SaveHost` registers the save service and the
+autosave in the Simulation group; 10's master never ticked them.
+
+## U-138 UD008 is symbol-checked, UD009 matches by name
+
+2026-10-20, f0-contracts (F0-5; `f1-analyzers` implements). UD008 resolves symbols instead of matching text; UD009 finds
+`DeterministicSimulation` by simple name (U-129).
+
+## U-139 Timer's registration bug goes with Timer
+
+2026-10-20, f0-contracts (F0-6). 10's Timer service registered itself as the contract `ITickable`. The service is not
+carried (U-124), so the defect goes with it.
+
+## f0-contracts: Each assembly's surface follows the spec of the task that implements it
+
+2026-10-20, f0-contracts. The contracts spec, the module specs and the plan disagree on some shapes. F0 declares, per
+assembly, the surface of the spec its F1 implementer builds against, plus the members the plan names:
+- `Unidad.Core` from `unidad-core` §b (`ISeedSource.Derive(string)` with `SeedMix.Salt`, `WinningStubs`/`ResolveKeyed`,
+  the debug seam in `Unidad.Core.Diagnostics`, `IContentCheck.Check(ContentReport)`, the Motion records and classes),
+  with the plan's additions (`StubbedContracts()`, `StepGroup`, `ReadModelCell`, `StubLedger`, `HandlerRegistry`,
+  `InstallerDiscovery.Modules`, `ContentPath`, and `Ease` values that include the Sine curves);
+- the five modules from `unidad-modules` §2 (U-50 moves its content types to core; Voice and Animalese stay);
+- the adapter from `unidad-adapter` §b (`ITickRegistry`, `IMotionRunner`, `UiDocumentHost`, `IModelSource`) with the
+  plan's frozen editor CLI: `LaneCli.Compile/Import/PlayScene` (`-unidadScene`) and `BuildCli.Player` (`-buildOut`,
+  `-development`, `-scene`, `-release`; writes `build-report.txt`; exit 0/1).
+
+Reversible: a shape can still change by a unidad PR before `f4-release-pre1` tags.

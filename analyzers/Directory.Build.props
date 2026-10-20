@@ -1,0 +1,3 @@
+<Project>
+  <!-- Stops the upward search: the analyzer and its smoke project take nothing from dotnet/Directory.Build.props (an analyzer must not analyze itself). -->
+</Project>
