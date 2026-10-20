@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="dim" class="unidad-layer unidad-dim" picking-mode="Position">
+        <ui:VisualElement name="card" class="unidad-card">
+            <ui:Label name="title" class="unidad-title" />
+            <ui:Button name="first" class="unidad-button" />
+            <ui:Button name="second" class="unidad-button" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

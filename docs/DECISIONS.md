@@ -580,3 +580,51 @@ assembly, the surface of the spec its F1 implementer builds against, plus the me
   `-development`, `-scene`, `-release`; writes `build-report.txt`; exit 0/1).
 
 Reversible: a shape can still change by a unidad PR before `f4-release-pre1` tags.
+
+## U-187 One overlay PanelSettings, layers by document sort order
+
+2026-10-20, f1-adapter-hosts-ui (P-A3). Every framework panel is a `UIDocument` on the one overlay PanelSettings
+(`PanelKeys.Overlay`, or the game's `StageBootstrap.OverlayPanelKey`); layering is `UIDocument.sortingOrder`
+(`PanelOrder`), never the shared asset's. Each document root ignores picking (only real controls and explicitly blocking
+layers such as the curtain and the pause dim pick) and gets `unidad.uss` first, so a game's own sheets passed after it
+override the `--unidad-*` variables. `IsPointerOverUi` checks screen-space documents only.
+
+## U-188 The curtain fades only on the way out
+
+2026-10-20, f1-adapter-hosts-ui. The opacity transition lives on `unidad-curtain--lifted`, not on `unidad-curtain`, so
+removing the class (a scene switch's Cover) is opaque in the same frame instead of a 0.35 s fade in. A lift finishes once,
+on the cover's `TransitionEndEvent` or a guard at `CurtainLiftSeconds + 0.1 s`, whichever comes first
+(`CurtainTimeline`); a Cover during the fade cancels that lift, so its late guard cannot hide the new cover.
+
+## U-189 The save loads at bind unless the game defers it
+
+2026-10-20, f1-adapter-hosts-ui. `SaveHost.Bind` calls `StartFresh()` under `fresh=true`, else `Load()`, unless the game
+binds `SaveLoadDeferred` (a title card): then the game calls `Load()` or `StartFresh()` itself. The `[Save] <Outcome>` line
+and the corner notice follow `GameLoadedEvent`, so a deferred load gets them too. `PeriodicWhile` is registered only when
+`AutosaveTuning.PeriodSeconds > 0`.
+
+## U-190 Static engine state is given back on destroy
+
+2026-10-20, f1-adapter-hosts-ui (P-A8). `Application.wantsToQuit` is attached once and detached in `OnDestroy`
+(`StaticHook`); input actions are disabled and disposed with their host; `FlowHost` restores `Time.timeScale` if its scene
+dies paused. Without domain reload a leaked handler or a frozen clock outlives the scene.
+
+## U-191 Sound volumes are linear and mixed in code
+
+2026-10-20, f1-adapter-hosts-ui. No mixer asset: `AudioSource.volume = clamp(base) × bus × Master`, 0 under `mute`
+(`BusMix`); the sources still play so timings stay identical. Music fades by its logical level (`MusicFade`), so a bus
+change mid-fade does not jump; a zero-length fade settles in the same call. One-shot voices return to the pool on the tick
+after they stop (`ActiveVoices`); an exhausted pool drops the sound.
+
+## U-192 Debug window in development builds only
+
+2026-10-20, f1-adapter-hosts-ui (P-A13). `DebugModeInstaller` binds `DebugModeState` (also as its concrete type) at order 1
+when `Debug.isDebugBuild` (editor included), else core's `InactiveDebugMode`; `DebugHost.Bind` does nothing in a release
+player. The window is UI Toolkit (`TabView`, one `Tab` per section title by `Order`). `HistoryDebugSection` keeps 10's
+entity filter; its tile filter goes with the grid sections (U-124).
+
+## U-193 Pause menu focus lands a frame later
+
+2026-10-20, f1-adapter-hosts-ui. The pause card's first button takes focus through `schedule.Execute`, because an element
+that was `display: none` this frame cannot take focus until it is laid out. Keyboard users see the focus ring on the
+next frame; the menu itself appears at once.
