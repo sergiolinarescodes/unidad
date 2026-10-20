@@ -1,0 +1,131 @@
+/* The framework tokens; a game's theme overrides the variables. */
+:root {
+    --unidad-curtain: #141210;
+    --unidad-mark: #8C7F6B;
+    --unidad-ink: #F5F0E0;
+    --unidad-soft-ink: #CCC7B8;
+    --unidad-dim: rgba(0, 0, 0, 0.6);
+    --unidad-panel: rgba(28, 26, 24, 0.97);
+    --unidad-panel-border: #8C7F6B;
+    --unidad-button: #3A3530;
+    --unidad-button-hover: #4A443D;
+    --unidad-button-pressed: #2C2824;
+    --unidad-accent: #FABA45;
+    --unidad-title-size: 28px;
+    --unidad-button-size: 20px;
+    --unidad-prompt-size: 18px;
+    --unidad-body-size: 16px;
+    --unidad-margin: 32px;
+    --unidad-padding: 18px;
+    --unidad-corner: 6px;
+    --unidad-border: 2px;
+    --unidad-spacing: 10px;
+}
+
+.unidad-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Curtain: the fade lives on the lifted class only, so covering again is instant. */
+.unidad-curtain {
+    background-color: var(--unidad-curtain);
+    align-items: center;
+    justify-content: center;
+}
+
+.unidad-curtain--lifted {
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.35s;
+}
+
+.unidad-curtain__mark {
+    width: 14px;
+    height: 14px;
+    rotate: 45deg;
+    background-color: var(--unidad-mark);
+    transition-property: opacity;
+    transition-duration: 0.9s;
+}
+
+.unidad-curtain__mark--low {
+    opacity: 0.3;
+}
+
+/* Pause card */
+.unidad-dim {
+    background-color: var(--unidad-dim);
+    align-items: center;
+    justify-content: center;
+}
+
+.unidad-card {
+    width: 360px;
+    height: 260px;
+    padding: var(--unidad-padding);
+    background-color: var(--unidad-panel);
+    border-width: var(--unidad-border);
+    border-color: var(--unidad-panel-border);
+    border-radius: var(--unidad-corner);
+    align-items: center;
+    justify-content: center;
+}
+
+.unidad-title {
+    font-size: var(--unidad-title-size);
+    color: var(--unidad-ink);
+    -unity-text-align: middle-center;
+    margin-bottom: var(--unidad-spacing);
+}
+
+.unidad-button {
+    min-width: 220px;
+    min-height: 44px;
+    margin-top: var(--unidad-spacing);
+    font-size: var(--unidad-button-size);
+    color: var(--unidad-ink);
+    background-color: var(--unidad-button);
+    border-width: var(--unidad-border);
+    border-color: var(--unidad-panel-border);
+    border-radius: var(--unidad-corner);
+}
+
+.unidad-button:hover {
+    background-color: var(--unidad-button-hover);
+}
+
+.unidad-button:focus {
+    border-color: var(--unidad-accent);
+}
+
+.unidad-button:active {
+    background-color: var(--unidad-button-pressed);
+}
+
+/* Save notice: bottom-left corner line */
+.unidad-notice {
+    position: absolute;
+    left: var(--unidad-margin);
+    bottom: var(--unidad-margin);
+    width: 520px;
+    height: 48px;
+    font-size: var(--unidad-body-size);
+    color: var(--unidad-soft-ink);
+    white-space: normal;
+}
+
+/* Boot failure page */
+.unidad-failure__message {
+    position: absolute;
+    left: 64px;
+    top: 64px;
+    right: 64px;
+    bottom: 64px;
+    font-size: var(--unidad-prompt-size);
+    color: var(--unidad-ink);
+    white-space: normal;
+}

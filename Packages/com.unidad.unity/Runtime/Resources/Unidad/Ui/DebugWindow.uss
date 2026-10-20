@@ -1,0 +1,41 @@
+/* The developer-only DEBUG MODE window. */
+.unidad-debug {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 340px;
+    height: 500px;
+    padding: 8px;
+    background-color: var(--unidad-panel);
+    border-width: var(--unidad-border);
+    border-color: var(--unidad-panel-border);
+    border-radius: var(--unidad-corner);
+    font-size: 12px;
+    color: var(--unidad-ink);
+}
+
+.unidad-debug__title {
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+    color: var(--unidad-accent);
+    margin-bottom: 4px;
+}
+
+.unidad-debug__tabs {
+    flex-grow: 1;
+}
+
+.unidad-debug__rows {
+    flex-grow: 1;
+}
+
+.unidad-debug__readout {
+    white-space: normal;
+    color: var(--unidad-ink);
+}
+
+.unidad-debug__separator {
+    height: 1px;
+    margin: 4px 0;
+    background-color: var(--unidad-panel-border);
+}
