@@ -1,5 +1,3 @@
-using System;
-
 namespace Unidad.Core.Motion
 {
     /// <summary>How one motion runs: its length, its curve and its start delay, in seconds.</summary>
@@ -8,6 +6,11 @@ namespace Unidad.Core.Motion
         public float End => Delay + Duration;
 
         /// <summary>Eased progress 0..1 at <paramref name="elapsed"/>: 0 before the delay; a zero duration gives 1 once the delay passed.</summary>
-        public float Progress(float elapsed) => throw new NotImplementedException();
+        public float Progress(float elapsed)
+        {
+            if (elapsed < Delay) return 0f;
+            if (Duration <= 0f) return 1f;
+            return Easing.Evaluate(Ease, (elapsed - Delay) / Duration, Overshoot);
+        }
     }
 }
