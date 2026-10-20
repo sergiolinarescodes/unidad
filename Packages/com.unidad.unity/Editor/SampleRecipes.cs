@@ -18,9 +18,15 @@ namespace Unidad.Adapter.Editor
         public const string ScenePath = "Assets/Scenes/Movement.unity";
         public const string BootstrapType = "Unidad.Samples.Movement.View.MovementSampleBootstrap, Unidad.Samples.Movement.View";
 
-        /// <summary>Imports the "Movement" sample into Assets/Samples.</summary>
+        /// <summary>Imports the "Movement" sample into Assets/Samples, unless a copy already compiles (the Sandbox's prepare step puts one there).</summary>
         public static void ImportMovement() => BatchExit.Run("SampleRecipes.ImportMovement", () =>
         {
+            // A second copy would declare the sample's assemblies twice.
+            if (Type.GetType(BootstrapType) != null)
+            {
+                Debug.Log($"UNIDAD SampleRecipes.ImportMovement: {BootstrapType} already compiles; not imported again");
+                return null;
+            }
             var sample = Sample.FindByPackage(PackageName, null).FirstOrDefault(s => s.displayName == SampleName);
             if (string.IsNullOrEmpty(sample.displayName)) return $"no sample '{SampleName}' in {PackageName}";
             return sample.Import(Sample.ImportOptions.OverridePreviousImports) ? null : "Sample.Import returned false";
@@ -37,6 +43,7 @@ namespace Unidad.Adapter.Editor
             EditorFolders.Ensure(ScenePath.Substring(0, ScenePath.LastIndexOf('/')));
             if (!EditorSceneManager.SaveScene(scene, ScenePath)) return $"could not save {ScenePath}";
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+            AssetDatabase.SaveAssets();
             return null;
         });
     }
