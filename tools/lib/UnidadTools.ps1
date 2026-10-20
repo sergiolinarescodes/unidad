@@ -4,7 +4,9 @@
 $ErrorActionPreference = 'Stop'
 
 function Get-RepoRoot([string]$From = (Get-Location).Path) {
-    $root = git -C $From rev-parse --show-toplevel 2>$null
+    # A git hook exports GIT_DIR (never GIT_WORK_TREE), which makes rev-parse answer the current directory: ask without it.
+    $hookDir = $env:GIT_DIR; $env:GIT_DIR = $null
+    try { $root = git -C $From rev-parse --show-toplevel 2>$null } finally { $env:GIT_DIR = $hookDir }
     if ($LASTEXITCODE -ne 0 -or !$root) { throw "not a git checkout: $From" }
     $root.Trim()
 }
