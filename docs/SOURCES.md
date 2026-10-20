@@ -9,6 +9,7 @@ rewrite them.
 |---|---|---|
 | 10-unidad-godot | 977cacd | Unidad.Core, the generic modules (Flow, Save, Text, Audio, Launch), the analyzers, tools, ported to netstandard2.1 + C# 14 |
 | unidad 0.1.0 | ad1524f | the picoCAD import half (`Editor/PicoCad`, `ModelCatalog`) ported into `com.unidad.unity`; `Tools~/`, `Skills~/`, `Documentation~/model-pipeline/` kept byte-identical |
+| 10-unidad-godot | 977cacd | `Samples/Movement` ported to `com.unidad.unity/Samples~/Movement` (Logic + View): engine-free service, Fixed-group TickBinding, StageBootstrap, UI Toolkit host, Input System bridge |
 
 ## Divergences
 
