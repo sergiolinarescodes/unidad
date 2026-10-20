@@ -356,6 +356,96 @@ merged in 11 after the sync started (`carry-unidad.ps1 -Since <S>`), so they are
 (`tools/lib/EditorLock.ps1`, U-55): one agent-started `Unity.exe` on the machine at a time. Until the helper exists,
 `sandbox-gate.ps1` refuses to start Unity.
 
+## U-40 One toolset, data per repo
+
+2026-10-20, `f0-tooling-base` (unidad-tooling). `tools/**` in unidad is a working toolset used by unidad itself AND the
+template every game copies verbatim (U-62 carries it at each sync). The only per-repo files are `tools/repo.json`,
+`tools/meta-roots.txt` and `docs/REVIEW.md` (U-57). No script hard-codes a repo name, branch, slot prefix, slnx or Unity
+method: they read `repo.json` through `tools/lib/UnidadTools.ps1`. unidad's slots are `../unidad-wt-slot<N>` (8 code
+slots), `../unidad-wt-unity1`, `../unidad-wt-loop` and `../unidad-wt-testbed`; its Unity project is `Sandbox`.
+
+## U-41 Editor-lock caps and FIFO
+
+2026-10-20, `f0-tooling-base`. The machine-wide editor lock (`tools/lib/EditorLock.ps1`, U-55) is a FIFO queue of
+tickets (`<home>/locks/queue/<utcTicks>-<pid>.json`): a waiter takes the lock only when its ticket is the oldest live one
+and the lock is free or stale (dead PID, or a PID reused by another program: start time 2 s off). It prints the queue
+every 30 s and gives up after `-WaitMinutes` (the caller exits 3). Each holder records its hold cap (`-TimeoutMinutes`;
+`repo.json` `lane.capsMinutes`, U-61: Compile/Import/Exec 15, Player/Run 45, Init 45); the caller waits for the Unity
+process it started and, at the cap, kills that PID's tree only. The lock is re-entrant for the same `-Owner` (passed to
+child processes as `UNIDAD_EDITOR_LOCK_OWNER`), so a nested sandbox-gate never deadlocks.
+
+## U-42 Exec -Collect
+
+2026-10-20, `f0-tooling-base` (contract for `f1-tooling-lane`). The lane works on commits: `-Branch b` uses the local
+branch `b` from the shared object store, else `origin/b` (U-61). What an `-Import` or `-Exec` writes is copied back into
+the caller's worktree (`-Collect <roots>`, default `lane.collectRoots`, never Library/Temp/Logs/UserSettings/Build or
+generated project files) and committed by the developer, never by the lane.
+
+## U-43 Refpack per repo and SHA
+
+2026-10-20, `f0-tooling-base`. Reference packs live in `%LOCALAPPDATA%/Unidad/refpacks/<repo>/<sha>/` (editor DLLs in
+`Editor/`), and each repo has its own pointer `refpacks/<repo>/current.txt` (the absolute directory, forward slashes, no
+newline), written to a `.tmp` and moved over, so two repos never overwrite each other's pointer and readers never see a
+half-written one. A refpack holds the package DLLs of `Library/ScriptAssemblies` selected by `repo.json` `refpack`;
+engine DLLs come from the install's `Data/Managed` directly and `Unidad.*` from source (U-59). The first one is the seed
+refpack `refpacks/seed/` (U-58); `gate.ps1` builds Check projects only while a pointer exists, else it prints
+`lane compile required`.
+
+## U-44 Everything as --set
+
+2026-10-20, `f0-tooling-base` (contract for `f1-tooling-lane`). The testbed and the lane's player runs pass every
+setting as `--set key=value`: `-Start x` becomes `--set start=x`, `-Frames n` `--set frames=n`, and `-Set` takes one
+string split only before a `key=` (U-60), so comma grants survive `pwsh -File`.
+
+## U-45 Loop phases, and which scripts claim what
+
+2026-10-20, `f0-tooling-base`. The loop (`tools/loop/run.ps1`, scheduled task `unidad-loop-<name>` every
+`loop.everyMinutes` = 30, one run at a time, installed only by the user) has two phases. Phase A: one headless agent per
+open PR, up to `loop.reviewers` = 4 in parallel, each in its own reviewer worktree `../<name>-loop-r<k>` of the loop
+clone, with `tools/loop/review-merge.md` as the brief; it merges main in, reviews, fixes, gates, pushes the PR head and
+writes a verdict JSON. Phase B is a script (U-48). The scheduled task runs the clone's own copy of `run.ps1`, so the
+loop always runs the merged toolset. `worktree-claim.ps1 -Kind code` (default) claims code slots; `-Kind unity` the
+repo's Unity slots, which otherwise belong to the lane (`unity-lane.ps1 -Claim`). `worktree-done.ps1 -Sweep` never
+touches the lane's slots, the testbed, the loop clone or its reviewers.
+
+## U-46 Sandbox shape
+
+2026-10-20, `f0-tooling-base` (contract for `f1-tooling-lane`). `Sandbox/` commits no scene: its
+`Unidad.Sandbox.Editor.Testbed.Play` builds the Movement scene in memory, and the lane's prepare step
+(`tools/sandbox-prepare.ps1`) copies `Packages/com.unidad.unity/Samples~/Movement` into the gitignored
+`Sandbox/Assets/Samples/Movement`, so the Sandbox compile covers the sample (0.1.0 `ad1524f`: sample gaps were invisible
+because `Samples~` never compiled). `Sandbox/Assets` is a meta root.
+
+## U-47 Captured meta templates
+
+2026-10-20, `f0-tooling-base`. `tools/meta-templates/<key>.meta` are captured from a real 7000.0.0a10 import by the seed
+run (`tools/seed-unity.ps1`, U-58): `folder cs asmdef asmref text default package uxml uss tss shader hlsl cginc compute
+png wav ogg ttf otf fbx unity prefab mat asset dll`, with `guid:` replaced by `{{GUID}}` and `timeCreated:` dropped.
+`tools/unity-metas.sh` renders them with GUID = first 32 hex of md5(repo-relative path); a `.json` (or any file) under
+`StreamingAssets/` takes `default`, `md txt bytes xml csv` take `text`, `csc.rsp`/`LICENSE`/extensionless files take
+`default`; any other extension with no template is refused. A meta Unity already wrote on disk is staged as is. Games
+reuse these templates; they are recaptured with the same script after an editor upgrade.
+
+## U-48 Phase B is a script; bisect by PR
+
+2026-10-20, `f0-tooling-base`. Phase B merges, in PR order into `loop/staging` from main, every PR whose verdict is
+`pass` at the PR's current head, running `gate.ps1 -BuildOnly` after each merge. A PR whose merge conflicts with one
+merged earlier in the run is left for the next run (its Phase A resolves it against the new main). A PR whose build is
+red, or whose own verdict is `blocked`, gets `loop:blocked`, a comment with the failing step's last 40 lines, and its
+head in `.loop/blocked.json`; any new push to the PR head lifts the label. Then every `repo.json` `stagingChecks`
+command (U-64) and, when a merged PR touched `loop.lanePaths` and `tools/unity-lane.ps1` exists, one lane `-Compile` and
+`-Bee` of staging on the loop slot. A red step is bisected over the run's merges with `Find-FirstRed` (main counts as
+green; at most ceil(log2 k) lane calls); the culprit is blocked, staging is reset before it and later PRs wait for the
+next run. A lane exit of 2 or more (queue timeout, STOP, environment) pushes nothing this run. Then a fast-forward push
+to main (GitHub marks each PR merged), PRs stacked on a merged head are retargeted to main BEFORE the head is deleted,
+the refpack is refreshed from the loop slot, and `worktree-done.ps1 -Sweep` runs.
+
+## U-49 Own PIDs only
+
+2026-10-20, `f0-tooling-base`. Every tool that starts a process (the seed, the lane, the testbed, the loop) waits for
+and kills only the PIDs it started, by their captured PID. An unregistered `Unity.exe` is the user's and is never
+touched, counted or killed. The STOP file (`<home>/guard/STOP`, `f1-tooling-lane`) blocks every lane mode, the
+testbed and Phase B's lane calls.
 ## U-120 Content lives in `Unidad.Core.Content`
 
 2026-10-20, f0-contracts (P1, settled by U-50). `IContentSource`, `ContentJson`, `ContentException`, `ContentPath`,

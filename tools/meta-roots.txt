@@ -1,0 +1,5 @@
+# Folders whose files and subfolders carry a Unity .meta (tools/unity-metas.sh). One repo-relative root per line.
+Packages/com.unidad.core
+Packages/com.unidad.modules
+Packages/com.unidad.unity
+Sandbox/Assets
