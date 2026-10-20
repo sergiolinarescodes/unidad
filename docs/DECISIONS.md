@@ -589,3 +589,44 @@ Sine curves included; a `Timeline` beat added behind beats already fired fires o
 `Timeline.Complete` never moves `Time` backwards; `Typewriter` compares its budget with a 1e-5 s tolerance so float
 sums of `1/CharsPerSecond` do not drop a character; `ShakeSpec.Sample` replays `DeterministicRandom(Seed)` per sample
 instead of caching, since the spec is a value type.
+## U-180 No MainThreadQueue type
+
+2026-10-20, f1-adapter-runtime (P-A1). The queue is core's `IMainThreadDispatcher`, bound by `UnidadBootstrap` and
+registered FIRST in `TickGroup.Input`, so job results land before anything reads them that frame (10's behaviour). It is
+not `runWhilePaused`: job results land after a resume.
+
+## U-181 Four PlayerLoop systems step four TickSchedules
+
+2026-10-20, f1-adapter-runtime (P-A2). `Input` in `PreUpdate` after `NewInputUpdate`; `Simulation`+`Streaming` in
+`Update` before `ScriptRunBehaviourUpdate`; `Presentation`+`Rendering` in `PreLateUpdate` before
+`ScriptRunBehaviourLateUpdate`; `Fixed` in `FixedUpdate` before `ScriptRunBehaviourFixedUpdate`. A missing anchor
+appends with a warning; a missing phase throws. Markers are stripped by FullName (`Unidad.Adapter.UnidadTick` and its
+nested types) on disable, at `SubsystemRegistration` and at `OnCodeUnloading`, so a reload never leaves a stale system.
+
+## U-182 `frames` quits after an event
+
+2026-10-20, f1-adapter-runtime (P-A6). `PlayFrames` counts from the first `FlowStateChangedEvent` into `Play`, also while
+paused; at the limit it publishes `PlayFramesElapsedEvent(n)` synchronously and then quits with `IAppQuit.ExitCode`.
+`frames` <= 0 fails the boot.
+
+## U-183 SceneId.Value is the scene name
+
+2026-10-20, f1-adapter-runtime (P-A7). `SceneLoader` loads by name, single mode; a name missing from the build profile
+throws. No scene catalogue type.
+
+## U-184 `strict` fails after the stage hosts bound
+
+2026-10-20, f1-adapter-runtime. The winning stubs are logged right after the launch-key check, but `strict=true` throws
+only after `BuildStage` and every `IStageHost` bound, so a report host (11's boot report) is in place when the boot fails.
+
+## U-185 The C3 fallback reaches AssemblyLoadContext by reflection
+
+2026-10-20, f1-adapter-runtime. netstandard2.1 has no `System.Runtime.Loader`; Unity 7 runs CoreCLR, so the AppDomain
+fallback finds `AssemblyLoadContext.GetLoadContext` by reflection and keeps the bootstrap's context and the default one.
+Where the type is absent, it keeps every assembly.
+
+## U-186 `history=true` waits for core's RecordingEventBus
+
+2026-10-20, f1-adapter-runtime. F0 did not declare `RecordingEventBus`/`HistoryService` (f1-core-runtime ports them).
+Until they land, `RecordEventHistory` logs a warning and binds the plain bus; the first sync after both PRs merge wraps
+the bus and binds `IHistoryService` with recording started.

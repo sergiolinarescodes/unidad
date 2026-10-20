@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Unidad.Adapter
 {
@@ -8,19 +9,33 @@ namespace Unidad.Adapter
     /// </summary>
     public sealed class AssetLibrary
     {
-        public T Load<T>(string key) where T : UnityEngine.Object => throw new NotImplementedException();
+        private readonly AssetShelf _shelf = new();
+
+        public T Load<T>(string key) where T : UnityEngine.Object => (T)_shelf.Get(key, typeof(T), () => LoadResource<T>(key));
 
         /// <summary>A miss is cached and returns false.</summary>
-        public bool TryLoad<T>(string key, out T asset) where T : UnityEngine.Object => throw new NotImplementedException();
+        public bool TryLoad<T>(string key, out T asset) where T : UnityEngine.Object
+        {
+            var found = _shelf.TryGet(key, typeof(T), () => LoadResource<T>(key), out var loaded);
+            asset = found ? (T)loaded : null;
+            return found;
+        }
 
-        public IDisposable AllowColdLoads() => throw new NotImplementedException();
+        public IDisposable AllowColdLoads() => _shelf.AllowColdLoads();
 
-        public void BeginScene() => throw new NotImplementedException();
+        public void BeginScene() => _shelf.BeginScene();
 
-        public void Seal() => throw new NotImplementedException();
+        public void Seal() => _shelf.Seal();
 
-        public bool IsSealed => throw new NotImplementedException();
+        public bool IsSealed => _shelf.IsSealed;
 
-        public int Count => throw new NotImplementedException();
+        public int Count => _shelf.Count;
+
+        // Unity's fake null becomes a real null, so the shelf caches the miss.
+        private static object LoadResource<T>(string key) where T : UnityEngine.Object
+        {
+            var asset = Resources.Load<T>(key);
+            return asset != null ? asset : null;
+        }
     }
 }
