@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "com.unidad.core": "file:../../Packages/com.unidad.core",
+    "com.unidad.modules": "file:../../Packages/com.unidad.modules",
+    "com.unidad.unity": "file:../../Packages/com.unidad.unity",
+    "com.unity.cloud.gltfast": "6.20.0",
+    "com.unity.render-pipelines.universal": "17.7.0"
+  }
+}
