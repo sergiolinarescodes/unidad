@@ -217,7 +217,7 @@ try {
             $log = LogFile 'bee'
             $code = Unity 'bee' $caps.compile (Get-UnityArgs 'bee' $proj $log)
             if ($code -ge 3) { $exitCode = $code; break }
-            $errors = @(if (Test-Path -LiteralPath $log) { Get-CompileErrors @(Get-Content -LiteralPath $log | Where-Object { $_ -match ': error (CS|UD)\d' }) })
+            $errors = @(if (Test-Path -LiteralPath $log) { Get-CompileErrors @(Get-Content -LiteralPath $log | Where-Object { $_ -match ': error (CS|UD|UAC)\d' }) })
             $errors | ForEach-Object { Write-Host $_ }
             $exitCode = if ($code -ne 0 -or (!$cfg.lane.beeExitCodeReliable -and $errors)) { 1 } else { 0 }
             if ($exitCode) { Write-Host "lane: Bee red (exit $code); log $log" }

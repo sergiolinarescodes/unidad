@@ -69,7 +69,7 @@ function Get-CompileErrors([string[]]$Lines) {
     $seen = [Collections.Generic.List[string]]::new()
     foreach ($l in $Lines) {
         $t = "$l".Trim()
-        if ($t -match 'error (CS|UD)\d{3,4}' -and !$seen.Contains($t)) { $seen.Add($t) }
+        if ($t -match 'error (CS|UD|UAC)\d{3,4}' -and !$seen.Contains($t)) { $seen.Add($t) }
     }
     $seen.ToArray()
 }

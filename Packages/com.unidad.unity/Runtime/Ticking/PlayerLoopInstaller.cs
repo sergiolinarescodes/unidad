@@ -8,7 +8,7 @@ using UnityEngine.LowLevel;
 namespace Unidad.Adapter
 {
     /// <summary>Puts a TickRunner's four systems into the PlayerLoop (<see cref="PlayerLoopPlan"/>) and strips them by marker name.</summary>
-    internal static class PlayerLoopInstaller
+    internal static partial class PlayerLoopInstaller
     {
         public static void Insert(TickRunner runner)
         {
