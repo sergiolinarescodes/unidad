@@ -1,0 +1,14 @@
+{
+    "name": "Unidad.Save",
+    "rootNamespace": "Unidad.Save",
+    "references": ["Unidad.Core", "Unidad.Launch"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

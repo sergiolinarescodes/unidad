@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Check/Unidad.Adapter.Check.csproj" />
+  <Project Path="Check/Unidad.Adapter.Editor.Check.csproj" />
+</Solution>

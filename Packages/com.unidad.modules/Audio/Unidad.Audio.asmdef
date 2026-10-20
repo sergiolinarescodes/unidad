@@ -1,0 +1,14 @@
+{
+    "name": "Unidad.Audio",
+    "rootNamespace": "Unidad.Audio",
+    "references": ["Unidad.Core", "Unidad.Launch", "Unidad.Text"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

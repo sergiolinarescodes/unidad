@@ -1,0 +1,20 @@
+<Project>
+  <!-- SourceDir (repo-relative, set by each csproj) is the asmdef folder the project compiles; Tests~ is never part of it. -->
+  <ItemGroup Condition="'$(SourceDir)'!=''">
+    <Compile Include="$(RepoRoot)$(SourceDir)/**/*.cs" Exclude="$(RepoRoot)$(SourceDir)/Tests~/**;@(SourceExclude)" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsSmoke)'=='true'">
+    <PackageReference Include="NUnit" Version="$(NUnitVersion)" />
+    <PackageReference Include="NUnit3TestAdapter" Version="$(NUnitAdapterVersion)" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
+  </ItemGroup>
+  <!-- U-59: engine module DLLs only, never a Data/Managed/** glob (CS1704 duplicates). -->
+  <ItemGroup Condition="'$(IsCheck)'=='true'">
+    <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEngine/UnityEngine.*Module.dll" Private="false" />
+    <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEngine/Unity.Scripting.dll" Private="false" />
+    <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEngine/UnityEditor.*Module.dll" Private="false" Condition="'$(IsEditorCheck)'=='true'" />
+    <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEditor.dll" Private="false" Condition="'$(IsEditorCheck)'=='true'" />
+    <Reference Include="$(UnityEditorDir)/Data/Managed/UnityEditor.Graphs.dll" Private="false" Condition="'$(IsEditorCheck)'=='true'" />
+    <Reference Include="$(RefPack)/*.dll" Exclude="$(RefPack)/Unidad.*.dll" Private="false" Condition="'$(HasRefPack)'=='true'" />
+  </ItemGroup>
+</Project>

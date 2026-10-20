@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <SourceDir>Packages/com.unidad.modules/Launch/Tests~</SourceDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Unidad.Launch/Unidad.Launch.csproj" />
+  </ItemGroup>
+</Project>

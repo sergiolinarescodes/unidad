@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <SourceDir>Packages/com.unidad.modules/Flow</SourceDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Unidad.Core/Unidad.Core.csproj" />
+  </ItemGroup>
+</Project>
