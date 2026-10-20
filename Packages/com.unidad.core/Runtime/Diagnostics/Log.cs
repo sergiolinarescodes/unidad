@@ -11,7 +11,9 @@ namespace Unidad.Core.Diagnostics
     /// </summary>
     public static class Log
     {
+#pragma warning disable UD014 // the sanctioned logging seam (D-19), set once by the adapter's bootstrap
         private static ILog _current = new ConsoleLog();
+#pragma warning restore UD014
 
         /// <summary>The active logger. Setting null restores the Console default.</summary>
         public static ILog Current
