@@ -11,7 +11,12 @@ namespace Unidad.Launch
     public sealed record BootSeed(int Value)
     {
         /// <summary><c>seed</c> when given, else <c>draw() &amp; int.MaxValue</c>.</summary>
-        public static BootSeed From(LaunchArgs args, Func<int> draw) => throw new NotImplementedException();
+        public static BootSeed From(LaunchArgs args, Func<int> draw)
+        {
+            if (args == null) throw new ArgumentNullException(nameof(args));
+            if (draw == null) throw new ArgumentNullException(nameof(draw));
+            return new BootSeed(args.TryGetInt(LaunchSettings.Seed, out int seed) ? seed : draw() & int.MaxValue);
+        }
     }
 
     /// <summary>The generic launch keys this module declares.</summary>
@@ -24,6 +29,15 @@ namespace Unidad.Launch
     /// <summary>Declares the six <see cref="LaunchSettings"/> keys.</summary>
     public sealed class LaunchInstaller : ISystemInstaller
     {
-        public void Install(ContainerBuilder builder) => throw new NotImplementedException();
+        public void Install(ContainerBuilder builder)
+        {
+            if (builder == null) throw new ArgumentNullException(nameof(builder));
+            builder.AddMany(_ => new LaunchSettingKey(LaunchSettings.Seed, "the boot seed every random stream derives from (an integer)"));
+            builder.AddMany(_ => new LaunchSettingKey(LaunchSettings.Frames, "quit after this many frames of play (a positive integer)"));
+            builder.AddMany(_ => new LaunchSettingKey(LaunchSettings.Strict, "true fails the boot when any stub still wins a binding"));
+            builder.AddMany(_ => new LaunchSettingKey(LaunchSettings.History, "true records every bus event"));
+            builder.AddMany(_ => new LaunchSettingKey(LaunchSettings.DebugOpen, "true opens the debug window at boot"));
+            builder.AddMany(_ => new LaunchSettingKey(LaunchSettings.AnimSkip, "true completes every animation at once"));
+        }
     }
 }

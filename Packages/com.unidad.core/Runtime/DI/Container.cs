@@ -28,6 +28,7 @@ namespace Unidad.Core.DI
         private readonly List<(Registration Registration, Type Contract)> _resolving = new();
         private readonly Type[] _stubbed;
         private readonly List<string> _winningStubs = new();
+        private readonly Dictionary<Type, object> _keyed = new();
         private bool _disposed;
 
         internal Container(IEnumerable<Registration> registrations)
@@ -83,8 +84,8 @@ namespace Unidad.Core.DI
         public IReadOnlyList<Type> StubbedContracts() => _stubbed;
 
         /// <summary>
-        /// "&lt;contract FullName&gt;" for every single contract a stub still wins, then "&lt;T FullName&gt;:&lt;id&gt;" for every
-        /// keyed handler id a <see cref="ResolveKeyed{T}"/> call resolved to an <see cref="IStub"/>.
+        /// "&lt;contract FullName&gt;" for every single contract a stub still wins, plus "&lt;T FullName&gt;:&lt;id&gt;" for every
+        /// keyed handler id a <see cref="ResolveKeyed{T}"/> call resolved to an <see cref="IStub"/>; sorted ordinal.
         /// </summary>
         public IReadOnlyList<string> WinningStubs => _winningStubs;
 
@@ -92,7 +93,20 @@ namespace Unidad.Core.DI
         /// <see cref="ResolveAll{T}"/> folded into a registry by id: a real handler replaces a stub with the same id, two real
         /// handlers with one id throw. Cached per <typeparamref name="T"/>.
         /// </summary>
-        public OrderedRegistry<T> ResolveKeyed<T>(Func<T, string> idOf) => throw new NotImplementedException();
+        public OrderedRegistry<T> ResolveKeyed<T>(Func<T, string> idOf)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(Container));
+            if (_keyed.TryGetValue(typeof(T), out var cached)) return (OrderedRegistry<T>)cached;
+            var ledger = new StubLedger();
+            var registry = HandlerRegistry.Fold(ResolveAll<T>(), idOf, ledger, typeof(T).FullName);
+            _keyed[typeof(T)] = registry;
+            if (ledger.Entries.Count > 0)
+            {
+                _winningStubs.AddRange(ledger.Entries);
+                _winningStubs.Sort(StringComparer.Ordinal);
+            }
+            return registry;
+        }
 
         public bool HasBinding<T>() => HasBinding(typeof(T));
 

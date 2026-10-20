@@ -628,3 +628,230 @@ entity filter; its tile filter goes with the grid sections (U-124).
 2026-10-20, f1-adapter-hosts-ui. The pause card's first button takes focus through `schedule.Execute`, because an element
 that was `display: none` this frame cannot take focus until it is laid out. Keyboard users see the focus ring on the
 next frame; the menu itself appears at once.
+## U-161 Generic text has in-code English defaults; locales fall back to English
+
+2026-10-20, f1-modules (D-U2). The nine `TextKeys.Generic` rows ship in code (`TextDefaults.English()`), used only for keys
+no file defines, so a game needs no framework text file and can still override them. A non-`en` table falls back row by
+row to the merged English table, then to the defaults. 10 shipped a `text.en.json` every game had to copy.
+
+## U-162 The launch line is `--set key=value` only
+
+2026-10-20, f1-modules (D-U3). `--movie`, `--pause-at`, `--vsync` are gone; `--frames` and `--save-dir` are the keys
+`frames` and `save.dir`. `LaunchLine.Read` is engine-free: everything after the first `--` in the process arguments, else
+the `UNIDAD_LAUNCH` string split on whitespace with double quotes (an unterminated quote is an error).
+
+## U-163 Save keeps unknown sections and writes atomically with one backup
+
+2026-10-20, f1-modules (D-U4, implements U-136). Sections no participant claims are deep-cloned on Loaded and written
+first on every save. `FileSaveStore` writes `slot0.json.tmp`, then `File.Replace(tmp, slot, slot.bak)` when the slot
+exists, else `File.Move`; `UnauthorizedAccessException` becomes `IOException`.
+
+## U-164 `fresh` starts without reading; `HasSave` feeds a title card
+
+2026-10-20, f1-modules (D-U5). `StartFresh()` returns and publishes `NoSave` "fresh start" and allows writing; the first
+write moves the old slot to `slot0.json.bak`. `HasSave` is true when the store holds a slot, unreadable included.
+
+## U-165 Autosave counts tick time and coalesces
+
+2026-10-20, f1-modules (D-U6, implements U-135). The periodic timer adds the `Tick(dt)` it is given; `IAutosave` no longer
+needs `ITimeProvider`. Any number of `AutosaveAfter`/`On` events before one tick make one save.
+`AutosaveTuning.PeriodSeconds <= 0` disables the periodic save.
+
+## U-166 Sound rows may be declared silent; UI cues renamed; unknown cues are reported
+
+2026-10-20, f1-modules (D-U7). A row without `stream` is a known id that plays nothing and logs nothing. The catalogue is
+content: every `sounds.json` / `sounds.*.json` merged through `ContentJson.Catalogue` (none is fine), a volume outside 0..1
+refused naming the file. `UiCues` are `ui.pause.open`, `ui.pause.close`, `ui.click`, `ui.hover`. `Play(SoundId)` plays on
+the row's bus. An id with no row is logged once and publishes `UnknownSoundEvent(Id)` once, the hook a game's strict
+mode subscribes to. `PlayMusic` of an unknown or silent id leaves `CurrentMusic` unchanged (10 set it to silence).
+
+## U-167 Focus layers are numbers the game extends
+
+2026-10-20, f1-modules (D-U8). The framework keeps `None 0`, `World 10`, `Modal 200`; `FlowInput.BackAllowed(focus)` is
+true only at or below `World`. `FlowInstaller` also binds `IInputFocusService` (10 had a separate installer).
+
+## U-168 `SceneId` is a string record
+
+2026-10-20, f1-modules (D-U9). `readonly record struct SceneId(string Value)`, registered by the game; 10's enum is gone.
+
+## U-169 `SaveRead` gains `Int`, `Long`, `Enum<T>` and `Array`
+
+2026-10-20, f1-modules (D-U10). `Enum<T>` takes a defined NAME only; numeric text is refused. `Object(section, field)`
+joins `Object(node, what)`.
+
+## U-170 `MemoryContentSource` is public
+
+2026-10-20, f1-modules (D-U11, already so in core per U-50). Every smoke test feeds inline JSON through it.
+
+## U-171 Installers load their own content
+
+2026-10-20, f1-modules (D-U12). `TextInstaller` binds `TextTable` from `TextContent.Load(IContentSource,
+ResolveAll<TextKeySet>(), locale)` (locale from a bound `LaunchArgs`, else `en`); `AudioInstaller` binds `SoundCatalog`
+from the source. The adapter binds `IContentSource` and `LaunchArgs` and loads no text itself.
+
+## U-172 Generic launch keys are declared by the module that reads them
+
+2026-10-20, f1-modules (D-U13). Launch: `seed`, `frames`, `strict`, `history`, `debug.open`, `anim.skip`. Save:
+`save.dir`, `fresh`. Text: `locale`. Audio: `mute`. A game declares its own (`start`, `date`, ...).
+## U-200 One sync is two PRs
+
+2026-10-20, f1-sync-verify (sync-unidad spec, sync-split). `sync-unidad-<k>-up` opens the replay PR on unidad `main` and
+ends; the loop merges it. `sync-unidad-<k>-down` starts from the merged `origin/main`, tags, carries into the game, boots
+it (C14) and opens the game's carry PR. Why: a task waiting 30+ minutes on a merger would hold a slot and the editor lock.
+
+## U-201 Boot strictness per run
+
+2026-10-20, f1-sync-verify (sync-strict, amended by D-79). Run 1 boots with `strict=false` and records
+`stubs.winning=<n>` in the PR body (`sync-verify -Phase Down -Report <file>` prints it). From run 2 on, and at ship, the
+boot is strict: `sync-verify ... -Strict` needs `strict=true` and `stubs.winning=0`. Every run needs `boot=ok`, `errors=0`.
+
+## U-202 What a carry PR may touch
+
+2026-10-20, f1-sync-verify (sync-carry-scope, amended by U-62 and D-83). `Packages/com.unidad.{core,modules,unity}/**`,
+`docs/SOURCES.md`, `dotnet/Unidad.*/**` and a top-level `dotnet/*.slnx` line (only when a framework asmdef changed), the
+analyzer path line of `dotnet/Directory.Build.props`, and `tools/**` minus `tools/repo.json`, `tools/meta-roots.txt` and the
+game's `repo.json` `gameTools` (entries relative to `tools/`, globs allowed). `sync-verify -Phase Down` check D4 enforces it.
+
+## U-203 A carry PR needs no Divergences row
+
+2026-10-20, f1-sync-verify (sync-carry-exempt). `check-tree`'s "framework edit without a Divergences row" rule skips a PR
+whose `docs/SOURCES.md` diff changes a line inside the `carry-unidad` block; the reviewer runs `sync-verify -Phase Down`
+instead (D1 tag + SHA, D2 drift covered by remaining rows, D3 replayed rows gone, D4 scope).
+
+## U-204 The Sandbox gate shares the one editor lock
+
+2026-10-20, f1-sync-verify (sync-sandbox-lock). `sandbox-gate.ps1` starts Unity only through `tools/unity-lane.ps1`
+against unidad's `repo.json`, so it takes the same lock as every lane call (U-55, U-118); it never implements a second one.
+
+## U-205 Changes that cannot be replayed go upstream first
+
+2026-10-20, f1-sync-verify (sync-upstream-first). A Divergences row may not name the analyzer DLL or a `package.json`
+`version`/`dependencies` field (U-116). When a game check needs one, the fix is a unidad PR, then a sync with zero rows
+(`-up` skipped; `-down` tags and carries).
+
+## U-206 The up PR adds no game names
+
+2026-10-20, f1-sync-verify (sync-no-game-names). An added line under `Packages/` matching `\bCds\b|\bCDS\b|\bcds\.`
+stops the run; the row's author generalises it in the game first. `sync-verify -Phase Up` check U5 diffs the tag against
+the previous `v2.*` tag.
+
+## U-207 No project build under the scratchpad
+
+2026-10-20, f1-sync-verify (sync-scratch-paths). The session scratchpad path contains `--`, which breaks MSBuild mode.
+Patch files and reports may live there; worktrees, Sandbox copies and players never do. Smoke tests build their
+throwaway repos under `[IO.Path]::GetTempPath()`.
+## U-194 Models are a registry the game feeds
+
+2026-10-20, f1-adapter-motion-models-editor (P-A4). `ModelEntry(Id, AssetKey, Scale, Kind)` rows come from multi-bound
+`IModelSource`s, merged in resolve order by `ModelCatalog` (duplicate id names both sources; blank id/key and a scale
+<= 0 are refused). Material replacement is the game's multi-bound `IModelDecorator`, run by `ModelSpawner.Instantiate`
+after the scaled instantiate. 0.1.0's `kinds/models.json`, `ModelEffectPreview`, effect profiles, view classes,
+`IAnimationResolver` and PrimeTween are not ported. `PicoCadPrefabBuilder` keeps the texture setup and the prefab save,
+takes the target folder as a parameter (F0's frozen `Build(gltf, manifest, targetFolder)`, not 0.1.0's
+`kindFolder, kind, modelId`: kind and id only fed the dropped preview), and builds no Animator or clips; a manifest
+with animations logs `WARN: <n> motion track(s) not imported`.
+
+## U-195 Flash uses a MaterialPropertyBlock
+
+2026-10-20, f1-adapter-motion-models-editor (P-A11). `ModelEffects.Flash` drives the first of `baseColorFactor`,
+`_BaseColor`, `_Color` on each renderer's MPB from `original + colour x intensity` back to the shared material's value,
+on channel `flash`. 0.1.0 copied `renderer.materials` and leaked a material per renderer per flash.
+
+## U-196 One motion per (owner, channel), in an engine-free table
+
+2026-10-20, f1-adapter-motion-models-editor. `MotionTable` (Runtime/Pure) holds every motion; a start on a busy
+`(owner, channel)` (reference owner, ordinal channel) cancels the old one without its callback, and nothing else
+cancels on start. Delay holds without writing; the end value is written exactly (Punch/Shake end at `from`), then the
+slot is freed, then `onComplete` runs; a destroyed Unity target frees silently. The math sits behind `IMotionSampler`
+(`CoreMotionSampler` in production), so the rules are smoke-tested in dotnet.
+
+## U-197 Editor Check projects reference the UnityEditor facade Unity compiles against
+
+2026-10-20, f1-adapter-motion-models-editor. `dotnet/Directory.Build.targets` referenced `Data/Managed/UnityEditor.dll`,
+which duplicates types of `UnityEditor.CoreModule.dll` (CS0433 on `MenuItem`). Unity's own editor csproj references
+`Data/Managed/UnityEngine/UnityEditor.dll`; the Check now does too (amends U-59's path, not its rule).
+## U-140 Keyed handlers fold by stub-ness, and WinningStubs is one sorted list
+
+2026-10-20, f1-core-runtime (D-core-1, implements U-121). `HandlerRegistry.ById` and `Container.ResolveKeyed` share one
+fold: walk the handlers in container order; a blank id throws `<T.Name> '<type>' has an empty id.`; a real replaces a
+stub, a stub never replaces a real, two stubs keep the later one, two reals throw
+`<T.Name> id '<id>' is bound twice: <A> and <B>.`. `ResolveKeyed` caches per `T` (a second call returns the same
+registry whatever `idOf` it is given) and adds `<T FullName>:<id>` for every id a stub still serves to `WinningStubs`,
+which stays sorted ordinal as a whole.
+
+## U-141 The tick schedule pauses; StepGroup is the same step for one group
+
+2026-10-20, f1-core-runtime (D-core-3, implements U-122). `Step(dt)` is `Step(dt, dt, false)`. `StepGroup(group, ...)`
+runs the same loop over one group's entries only, so the adapter's PlayerLoop phases share one schedule's order and
+faults. A paused non-`RunWhilePaused` entry is skipped before its accumulator is touched.
+
+## U-142 ModifierStack's stable sort is an insertion sort
+
+2026-10-20, f1-core-runtime (D-core-4, implements U-134). The list itself is insertion-sorted by priority descending when
+dirty: stable, allocation-free, and since new modifiers are appended, list order among equal priorities is insertion
+order. Stacks are small; no per-entry sequence counter is needed.
+
+## U-143 The dead core services are not carried
+
+2026-10-20, f1-core-runtime (D-core-5, confirms U-124). Not ported from 10's `Unidad.Core`: `Timer/*`, `Inventory/*`,
+`Progression/*`, `Resource/*`, `Testing/*`, `GridTestFactory` and every other `*TestFactory`,
+`ISystemInstaller.CreateTestFactory`, `Registry/IRegistry` + `RegistryBase`, `Patterns/CommandQueue/*`,
+`EventBus/NullEventBus`, `EventBus/EventBusFactory`, `Debugger/DebugModeService` + `IDebugProvider`, `Jobs/JitWarmup`,
+the parameterless `InstallerDiscovery.FindInstallerTypes()`. `f4-release-pre1` lists them in `docs/MIGRATING-0.x.md`.
+
+## U-144 Core's static arrays are pragma'd; DetMath does its own ScaleB
+
+2026-10-20, f1-core-runtime (D-core-6). `DetMath.SinCoefficients/CosCoefficients` and `Grid.CardinalOffsets/EightWayOffsets`
+carry `#pragma warning disable UD014` (immutable after type init), `Log._current` likewise as the D-19 seam; no other
+static field exists in core. `Math.ScaleB` is not in netstandard2.1, so `DetMath.Exp` multiplies by exact powers of two
+built from the exponent bits, in two halves outside [-1022, 1023] so only the last multiply rounds (the smoke test pins
+`Exp(1)`, the subnormal `Exp(-740)` and `Exp(-745.3) == 0`).
+## U-145 Content and Motion edge rules
+
+2026-10-20, f1-core-content-motion (D-core-2 is U-120). Bodies follow `unidad-core` §c.5 and §c.6, with these calls the
+spec leaves open: `Easing.Evaluate` returns exactly 0 at t <= 0 (and NaN) and exactly 1 at t >= 1 for every curve, the
+Sine curves included; a `Timeline` beat added behind beats already fired fires on the next `Advance`, after them;
+`Timeline.Complete` never moves `Time` backwards; `Typewriter` compares its budget with a 1e-5 s tolerance so float
+sums of `1/CharsPerSecond` do not drop a character; `ShakeSpec.Sample` replays `DeterministicRandom(Seed)` per sample
+instead of caching, since the spec is a value type.
+## U-180 No MainThreadQueue type
+
+2026-10-20, f1-adapter-runtime (P-A1). The queue is core's `IMainThreadDispatcher`, bound by `UnidadBootstrap` and
+registered FIRST in `TickGroup.Input`, so job results land before anything reads them that frame (10's behaviour). It is
+not `runWhilePaused`: job results land after a resume.
+
+## U-181 Four PlayerLoop systems step four TickSchedules
+
+2026-10-20, f1-adapter-runtime (P-A2). `Input` in `PreUpdate` after `NewInputUpdate`; `Simulation`+`Streaming` in
+`Update` before `ScriptRunBehaviourUpdate`; `Presentation`+`Rendering` in `PreLateUpdate` before
+`ScriptRunBehaviourLateUpdate`; `Fixed` in `FixedUpdate` before `ScriptRunBehaviourFixedUpdate`. A missing anchor
+appends with a warning; a missing phase throws. Markers are stripped by FullName (`Unidad.Adapter.UnidadTick` and its
+nested types) on disable, at `SubsystemRegistration` and at `OnCodeUnloading`, so a reload never leaves a stale system.
+
+## U-182 `frames` quits after an event
+
+2026-10-20, f1-adapter-runtime (P-A6). `PlayFrames` counts from the first `FlowStateChangedEvent` into `Play`, also while
+paused; at the limit it publishes `PlayFramesElapsedEvent(n)` synchronously and then quits with `IAppQuit.ExitCode`.
+`frames` <= 0 fails the boot.
+
+## U-183 SceneId.Value is the scene name
+
+2026-10-20, f1-adapter-runtime (P-A7). `SceneLoader` loads by name, single mode; a name missing from the build profile
+throws. No scene catalogue type.
+
+## U-184 `strict` fails after the stage hosts bound
+
+2026-10-20, f1-adapter-runtime. The winning stubs are logged right after the launch-key check, but `strict=true` throws
+only after `BuildStage` and every `IStageHost` bound, so a report host (11's boot report) is in place when the boot fails.
+
+## U-185 The C3 fallback reaches AssemblyLoadContext by reflection
+
+2026-10-20, f1-adapter-runtime. netstandard2.1 has no `System.Runtime.Loader`; Unity 7 runs CoreCLR, so the AppDomain
+fallback finds `AssemblyLoadContext.GetLoadContext` by reflection and keeps the bootstrap's context and the default one.
+Where the type is absent, it keeps every assembly.
+
+## U-186 `history=true` waits for core's RecordingEventBus
+
+2026-10-20, f1-adapter-runtime. F0 did not declare `RecordingEventBus`/`HistoryService` (f1-core-runtime ports them).
+Until they land, `RecordEventHistory` logs a warning and binds the plain bus; the first sync after both PRs merge wraps
+the bus and binds `IHistoryService` with recording started.
