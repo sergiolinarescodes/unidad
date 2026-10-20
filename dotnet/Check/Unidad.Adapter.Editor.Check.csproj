@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Unidad.Adapter.Editor</AssemblyName>
+    <SourceDir>Packages/com.unidad.unity/Editor</SourceDir>
+  </PropertyGroup>
+  <!-- glTFast types come only from the refpack (U-58); until one exists the PicoCad builder is not compiled. -->
+  <ItemGroup Condition="'$(HasRefPack)'!='true'">
+    <SourceExclude Include="$(RepoRoot)$(SourceDir)/PicoCad/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Unidad.Adapter.Check.csproj" />
+    <ProjectReference Include="../Unidad.Core/Unidad.Core.csproj" />
+    <ProjectReference Include="../Unidad.Launch/Unidad.Launch.csproj" />
+    <ProjectReference Include="../Unidad.Flow/Unidad.Flow.csproj" />
+    <ProjectReference Include="../Unidad.Text/Unidad.Text.csproj" />
+    <ProjectReference Include="../Unidad.Save/Unidad.Save.csproj" />
+    <ProjectReference Include="../Unidad.Audio/Unidad.Audio.csproj" />
+  </ItemGroup>
+</Project>

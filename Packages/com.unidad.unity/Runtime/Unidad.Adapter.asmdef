@@ -1,0 +1,22 @@
+{
+    "name": "Unidad.Adapter",
+    "rootNamespace": "Unidad.Adapter",
+    "references": [
+        "Unidad.Core",
+        "Unidad.Launch",
+        "Unidad.Flow",
+        "Unidad.Text",
+        "Unidad.Save",
+        "Unidad.Audio",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

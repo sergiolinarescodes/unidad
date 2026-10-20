@@ -1,0 +1,14 @@
+{
+    "name": "Unidad.Launch",
+    "rootNamespace": "Unidad.Launch",
+    "references": ["Unidad.Core"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

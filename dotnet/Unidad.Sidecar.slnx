@@ -1,0 +1,25 @@
+<Solution>
+  <Folder Name="/analyzers/">
+    <Project Path="../analyzers/Unidad.Analyzers/Unidad.Analyzers.csproj" />
+    <Project Path="../analyzers/Unidad.Analyzers.Smoke/Unidad.Analyzers.Smoke.csproj" />
+  </Folder>
+  <Folder Name="/core/">
+    <Project Path="Unidad.Core/Unidad.Core.csproj" />
+    <Project Path="Unidad.Core.Smoke/Unidad.Core.Smoke.csproj" />
+  </Folder>
+  <Folder Name="/modules/">
+    <Project Path="Unidad.Launch/Unidad.Launch.csproj" />
+    <Project Path="Unidad.Launch.Smoke/Unidad.Launch.Smoke.csproj" />
+    <Project Path="Unidad.Flow/Unidad.Flow.csproj" />
+    <Project Path="Unidad.Flow.Smoke/Unidad.Flow.Smoke.csproj" />
+    <Project Path="Unidad.Text/Unidad.Text.csproj" />
+    <Project Path="Unidad.Text.Smoke/Unidad.Text.Smoke.csproj" />
+    <Project Path="Unidad.Save/Unidad.Save.csproj" />
+    <Project Path="Unidad.Save.Smoke/Unidad.Save.Smoke.csproj" />
+    <Project Path="Unidad.Audio/Unidad.Audio.csproj" />
+    <Project Path="Unidad.Audio.Smoke/Unidad.Audio.Smoke.csproj" />
+  </Folder>
+  <Folder Name="/adapter/">
+    <Project Path="Unidad.Adapter.Smoke/Unidad.Adapter.Smoke.csproj" />
+  </Folder>
+</Solution>
