@@ -946,3 +946,44 @@ carry's `-Since S` keeps it and its row. It refuses (exit 2; 1 is usage) uncover
 `package.json` version/dependency edit. `carry-unidad.ps1` mirrors `tools/` with deletions (a game-only tool must be in
 `gameTools`) and stages its result without committing. `sandbox-gate.ps1` holds the editor lock across the lane's
 `-Compile` and `-Bee`; the lane re-enters an inherited `UNIDAD_EDITOR_LOCK_OWNER` instead of queueing behind it.
+
+## f3-adapter-sandbox-gate: The Sandbox's build scene and the sample import
+
+2026-10-20, f3-adapter-sandbox-gate. `Sandbox/ProjectSettings/EditorBuildSettings.asset` is committed listing
+`Assets/Scenes/Movement.unity`, which stays gitignored (U-46) and is written in the slot by
+`SampleRecipes.BuildMovementScene`; without the entry every lane checkout resets the list and `-Player` has no scene.
+`SampleRecipes.ImportMovement` imports nothing when the sample's bootstrap type already compiles (the Sandbox's prepare
+step copies it), because a second copy declares the sample's assemblies twice.
+
+## f3-adapter-sandbox-gate: Unity's own analyzers are compile errors too
+
+2026-10-20, f3-adapter-sandbox-gate. Unity 7 compiles with its `UAC` analyzers: a `[OnCodeUnloading]` method must sit in
+a `partial` type (UAC0031), so `PlayerLoopInstaller` is partial. The Check projects do not run these analyzers; only a
+lane compile does. The lane and `sandbox-gate.ps1` count `error UAC####` lines with `CS` and `UD`, since Bee's exit code
+is not trusted (repo.json `beeExitCodeReliable: false`).
+
+## f3-adapter-sandbox-gate: The lane builds players from Bee-compiled script assemblies
+
+2026-10-20, f3-adapter-sandbox-gate. After an MSBuild-mode `-Compile`, `Library/ScriptAssemblies` holds MSBuild's build;
+the field order of a partial class split over two files (URP core's `ProbeVolume`) then differs from Bee's player build,
+and `BuildPlayer` fails with "script class layout is incompatible between the editor and the player". The lane's player
+mode deletes `Library/ScriptAssemblies` first, so the build editor recompiles with Bee. It keeps the player's output as
+`Logs/lane-run-<stamp>.log` (a batch player writes no Player.log).
+
+## f3-adapter-sandbox-gate: C3 and C4 in the first framework player
+
+2026-10-20, f3-adapter-sandbox-gate. Sandbox player, `--set frames=60 --set strict=true`: exit 0.
+C3: `CurrentAssemblies.GetLoadedAssemblies` listed the module assemblies (9 installers, no fallback warning); the
+AppDomain fallback only draws Unity's UAC0005 warning. C4 (player half): the four systems went in at
+`Input@PreUpdate[7], Update@Update[0], LateUpdate@PreLateUpdate[13], Fixed@FixedUpdate[4]` (`NewInputUpdate` found; the
+boot logs this line). C4 across editor Play sessions (the strip on `OnCodeUnloading` / `SubsystemRegistration`) needs an
+editor Play session, which no agent opens: the testbed run checks it.
+
+## f3-adapter-sandbox-gate: The Movement sample keeps 10's numbers
+
+2026-10-20, f3-adapter-sandbox-gate. `MovementTuning` holds 10's values, including the input bridge's move speed 6 and
+jump force 12 (the adapter spec says "force 6"; its own rule, numbers unchanged, wins). `MovementService` is an `ITickable` bound with
+`TickBinding(..., TickGroup.Fixed)` (D-12); `MovementViewInstaller` adds `MovementHost` as an `IStageHost`, which spawns
+the level, draws on an overlay document at `PanelOrder.Hud` and registers the bridge (Input) and the view (Presentation).
+F0's metas were re-rendered from the captured templates (`unity-metas.sh --rerender Packages`, new), keeping their GUIDs;
+the analyzer DLL's meta keeps its plugin settings.

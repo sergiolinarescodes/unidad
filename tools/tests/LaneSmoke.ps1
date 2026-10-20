@@ -53,6 +53,7 @@ try {
         'Assets/C.cs(2,2): warning CS0168: declared but never used',
         'Build FAILED.')
     Assert ((Get-CompileErrors $log).Count -eq 2) 'CompileErrors_UniqueCsAndUd'
+    Assert ((Get-CompileErrors @('Packages/D.cs(45,29): error UAC0031: Lifecycle method must be declared in a partial class')).Count -eq 1) 'CompileErrors_UnityAnalyzerUac'
 
     $repo = New-Repo 'hash'
     Put "$repo/Assets/A.cs" "class A { }`n"; Put "$repo/Assets/A.asmdef" '{ "name": "A" }'; G -C $repo add Assets

@@ -217,7 +217,7 @@ try {
             $log = LogFile 'bee'
             $code = Unity 'bee' $caps.compile (Get-UnityArgs 'bee' $proj $log)
             if ($code -ge 3) { $exitCode = $code; break }
-            $errors = @(if (Test-Path -LiteralPath $log) { Get-CompileErrors @(Get-Content -LiteralPath $log | Where-Object { $_ -match ': error (CS|UD)\d' }) })
+            $errors = @(if (Test-Path -LiteralPath $log) { Get-CompileErrors @(Get-Content -LiteralPath $log | Where-Object { $_ -match ': error (CS|UD|UAC)\d' }) })
             $errors | ForEach-Object { Write-Host $_ }
             $exitCode = if ($code -ne 0 -or (!$cfg.lane.beeExitCodeReliable -and $errors)) { 1 } else { 0 }
             if ($exitCode) { Write-Host "lane: Bee red (exit $code); log $log" }
@@ -242,6 +242,9 @@ try {
             $stampText = if (Test-Path -LiteralPath $stampFile) { Get-Content -Raw -LiteralPath $stampFile }
             if ($Player -or !(Test-BuildReusable $stampText $sha (Test-Path -LiteralPath $exe))) {
                 if (Test-Path -LiteralPath $stampFile) { Remove-Item -LiteralPath $stampFile -Force }
+                # An MSBuild-mode compile leaves its own ScriptAssemblies, whose partial-class field order can differ from
+                # Bee's player build ("script class layout is incompatible"); the build editor recompiles them with Bee.
+                Remove-Item -LiteralPath "$proj/Library/ScriptAssemblies" -Recurse -Force -ErrorAction SilentlyContinue
                 $code = Unity 'player' $caps.player (Get-UnityArgs 'player' $proj (LogFile 'player') -Method $cfg.lane.playerBuildMethod -BuildOut $buildDir -Release:$Release)
                 if ($code -ne 0 -or !(Test-Path -LiteralPath $exe)) { Write-Host "lane: player build exit $code"; $exitCode = $(if ($code -ge 3) { $code } else { 1 }); break }
                 [IO.File]::WriteAllText($stampFile, $sha)
@@ -255,6 +258,8 @@ try {
                 $line = ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Base $base -Extra $extra
                 Write-Host "lane: $exe $((Get-PlayerRunArgs $line) -join ' ')"
                 $r = Invoke-Captured $exe (Get-PlayerRunArgs $line) ($caps.run * 60) $buildDir
+                [IO.File]::WriteAllLines((LogFile 'run'), [string[]]$r.Lines)
+                Write-Host "lane: player log $(LogFile 'run')"
                 if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report | Out-Host }
                 Write-Host "lane: player exit $($r.Code)"
                 $exitCode = switch ($r.Code) { 124 { 3 } 125 { 4 } default { $r.Code } }

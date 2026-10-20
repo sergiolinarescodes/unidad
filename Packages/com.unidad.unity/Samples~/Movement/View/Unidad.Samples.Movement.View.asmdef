@@ -1,0 +1,20 @@
+{
+    "name": "Unidad.Samples.Movement.View",
+    "rootNamespace": "Unidad.Samples.Movement.View",
+    "references": [
+        "Unidad.Samples.Movement",
+        "Unidad.Adapter",
+        "Unidad.Core",
+        "Unidad.Flow",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

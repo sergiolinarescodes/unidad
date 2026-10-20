@@ -4,6 +4,8 @@
 #   bash tools/unity-metas.sh --check      verify only: missing, orphan, unknown type, duplicate GUID, guarded rename
 #   bash tools/unity-metas.sh --guid <path>          print the GUID of a repo-relative path
 #   bash tools/unity-metas.sh --render <key> <path>  print the rendered template
+#   bash tools/unity-metas.sh --rerender <dir>       rewrite every committed meta under <dir> from its template, keeping
+#                                                    its GUID (metas written before the templates existed, U-58); .dll skipped
 # Scope: index entries under the roots of tools/meta-roots.txt. Skipped: a segment ending in '~' (except 'Samples~',
 # whose metas UPM copies), a segment starting with '.', '*.tmp'. GUID = first 32 hex of md5(repo-relative path), so
 # the same path gets the same meta in every repo and parallel tasks creating one folder write identical metas.
@@ -51,6 +53,18 @@ case "${1:-}" in
     --guid) [[ $# -eq 2 ]] || { echo "usage: unity-metas.sh --guid <path>"; exit 2; }; guid_of "$2"; exit 0 ;;
     --render) [[ $# -eq 3 ]] || { echo "usage: unity-metas.sh --render <key> <path>"; exit 2; }
               render "$2" "$3" || { echo "unity-metas: no template $2"; exit 1; }; exit 0 ;;
+    --rerender) [[ $# -eq 2 ]] || { echo "usage: unity-metas.sh --rerender <dir>"; exit 2; }
+        n=0
+        while IFS= read -r m; do
+            a="${m%.meta}"
+            [[ "$a" == *.dll ]] && continue
+            if [[ -d "$a" ]]; then key=folder; elif [[ -f "$a" ]]; then key=$(key_of "$a"); else continue; fi
+            g=$(grep -m1 -o '^guid: [0-9a-f]*' "$m" | cut -c7-)
+            [[ -f "$tpl_dir/$key.meta" ]] || { echo "unity-metas: $m: no template $key; left as is"; continue; }
+            sed "s/{{GUID}}/$g/" "$tpl_dir/$key.meta" | tr -d '\r' > "$m.tmp"
+            if cmp -s "$m.tmp" "$m"; then rm -f "$m.tmp"; else mv "$m.tmp" "$m"; n=$((n + 1)); fi
+        done < <(git -c core.quotepath=off ls-files -- "$2" | grep '\.meta$')
+        echo "unity-metas: re-rendered $n meta(s) under $2"; exit 0 ;;
     --check) mode=check ;;
     "") mode=hook ;;
     *) echo "usage: unity-metas.sh [--check | --guid <path> | --render <key> <path>]"; exit 2 ;;

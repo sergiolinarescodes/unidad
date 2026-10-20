@@ -31,7 +31,7 @@ $SmokeProjects = [ordered]@{
     unity     = @('dotnet/Unidad.Adapter.Smoke')
     analyzers = @('analyzers/Unidad.Analyzers.Smoke')
 }
-$ErrorLine = '\berror (CS|UD)\d{3,4}\b'
+$ErrorLine = '\berror (CS|UD|UAC)\d{3,4}\b'
 
 $Touched = @($Touched | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ })
 $bad = @($Touched | Where-Object { $_ -notin $SmokeProjects.Keys })
