@@ -1,0 +1,82 @@
+{
+  "name": "unidad",
+  "github": "sergiolinarescodes/unidad",
+  "mainBranch": "main",
+  "projectSubdir": "Sandbox",
+  "editorVersion": "7000.0.0a10",
+  "slotPrefix": "unidad-wt",
+  "codeSlots": 8,
+  "unitySlots": ["unity1"],
+  "loopSlot": "loop",
+  "testbedSlot": "testbed",
+  "sidecar": {
+    "solution": "dotnet/Unidad.Sidecar.slnx",
+    "viewCheckSolution": "dotnet/Unidad.ViewCheck.slnx"
+  },
+  "parity": {
+    "roots": ["Packages"],
+    "logicDir": "dotnet",
+    "checkDir": "dotnet/Check",
+    "projectPrefixes": ["Unidad."],
+    "ignoreProjects": ["Unidad.Analyzers"]
+  },
+  "lane": {
+    "prepare": "tools/sandbox-prepare.ps1",
+    "msbuildGlobs": false,
+    "beeExitCodeReliable": false,
+    "execPrefix": "Unidad.Sandbox.Editor.Lane.",
+    "testbedMethod": "Unidad.Sandbox.Editor.Testbed.Play",
+    "playerBuildMethod": "Unidad.Adapter.Editor.BuildCli.Player",
+    "playerName": "Sandbox",
+    "playerBootArgs": ["--set", "frames=60"],
+    "collectRoots": ["Assets"],
+    "capsMinutes": { "compile": 15, "import": 15, "exec": 15, "player": 45, "run": 45, "init": 45 },
+    "postCompileChecks": []
+  },
+  "refpack": {
+    "include": ["^Unity\\.", "^UnityEngine\\.", "^glTFast"],
+    "editorInclude": ["^UnityEditor", "\\.Editor\\."]
+  },
+  "gates": [
+    { "run": "pwsh -NoProfile -File tools/asmdef-parity.ps1" },
+    { "run": "bash tools/unity-metas.sh --check" },
+    { "run": "pwsh -NoProfile -File tools/check-tree.ps1" },
+    { "run": "{dotnet} build dotnet/Unidad.Sidecar.slnx -v:q -nologo", "requires": "dotnet/Unidad.Sidecar.slnx" },
+    { "run": "pwsh -NoProfile -File analyzers/build.ps1 -Check", "when": "^analyzers/", "requires": "analyzers/build.ps1" },
+    { "run": "pwsh -NoProfile -File tools/tests/ToolsSmoke.ps1", "when": "^(tools/|\\.githooks/)" }
+  ],
+  "smokeMap": [
+    { "match": "^Packages/com\\.unidad\\.core/", "project": "dotnet/Unidad.Core.Smoke" },
+    { "match": "^Packages/com\\.unidad\\.modules/([^/]+)/", "project": "dotnet/Unidad.$1.Smoke" },
+    { "match": "^Packages/com\\.unidad\\.unity/", "project": "dotnet/Unidad.Adapter.Smoke" },
+    { "match": "^analyzers/", "project": "analyzers/Unidad.Analyzers.Smoke" }
+  ],
+  "checkMap": [
+    { "match": "^Packages/com\\.unidad\\.unity/Runtime/", "project": "dotnet/Check/Unidad.Adapter.Check.csproj" },
+    { "match": "^Packages/com\\.unidad\\.unity/Editor/", "project": "dotnet/Check/Unidad.Adapter.Editor.Check.csproj" }
+  ],
+  "stagingChecks": [],
+  "loop": {
+    "everyMinutes": 30,
+    "reviewers": 4,
+    "provider": "claude",
+    "model": "opus",
+    "extraArgs": [],
+    "lanePaths": ["^Packages/com\\.unidad\\.unity/", "\\.asmdef$", "\\.asmref$", "(^|/)csc\\.rsp$", "(^|/)package\\.json$", "^Sandbox/"]
+  },
+  "binaryAllow": [
+    "Packages/com.unidad.core/Analyzers/Unidad.Analyzers.dll",
+    "Packages/com.unidad.unity/Runtime/Resources/**/*.wav",
+    "Packages/com.unidad.unity/Runtime/Resources/**/*.ogg"
+  ],
+  "renameGuard": ["Packages/com.unidad.unity/Runtime/Resources/**"],
+  "tree": {
+    "forbidden": [
+      { "glob": "*.shader", "regex": "shader_feature", "why": "D-29: runtime materials lose shader_feature variants in a player" },
+      { "glob": "*.hlsl", "regex": "shader_feature", "why": "D-29: runtime materials lose shader_feature variants in a player" },
+      { "glob": "Packages/**/*.cs", "regex": "\\bCds\\b|\\bCDS6", "why": "no game names under Packages/ (the framework holds no game code)" }
+    ],
+    "frameworkPaths": null,
+    "sourcesFile": "docs/SOURCES.md"
+  }
+}

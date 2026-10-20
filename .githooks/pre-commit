@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Enabled per clone by tools/worktree-claim.ps1 (core.hooksPath .githooks).
+set -e
+root="$(git rev-parse --show-toplevel)"
+bash "$root/tools/unity-metas.sh"
+pwsh -NoProfile -File "$root/tools/asmdef-parity.ps1"
