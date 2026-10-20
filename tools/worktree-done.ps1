@@ -78,6 +78,7 @@ if ($registered) {
         exit 0
     }
 } else {
+    if ((Split-Path $Path -Leaf) -notlike "$prefix-*") { Write-Host "$Path is not a registered worktree nor a $prefix-* leftover; not deleting it"; exit 1 }
     "$Path is not a registered worktree; deleting the leftover directory"
 }
 Set-Location $main
