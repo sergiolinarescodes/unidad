@@ -9,10 +9,17 @@ namespace Unidad.Audio
     public static class VolumeScale
     {
         /// <summary>1 is 0 dB; a level at or under the silence threshold, or anything while muted, is silence.</summary>
-        public static float ToDecibels(float linear, bool muted = false) => throw new NotImplementedException();
+        public static float ToDecibels(float linear, bool muted = false)
+        {
+            if (muted) return AudioTuning.SilenceDecibels;
+            var clamped = Clamp01(linear);
+            if (clamped <= AudioTuning.SilenceThresholdLinear) return AudioTuning.SilenceDecibels;
+            var decibels = (float)(20.0 * Math.Log10(clamped));
+            return decibels < AudioTuning.SilenceDecibels ? AudioTuning.SilenceDecibels : decibels;
+        }
 
-        public static bool IsSilent(float linear, bool muted = false) => throw new NotImplementedException();
+        public static bool IsSilent(float linear, bool muted = false) => muted || Clamp01(linear) <= AudioTuning.SilenceThresholdLinear;
 
-        public static float Clamp01(float value) => throw new NotImplementedException();
+        public static float Clamp01(float value) => value < 0f ? 0f : value > 1f ? 1f : value;
     }
 }

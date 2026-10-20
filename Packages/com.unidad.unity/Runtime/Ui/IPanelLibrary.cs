@@ -45,18 +45,29 @@ namespace Unidad.Adapter.Ui
     /// <summary>One open document and its root.</summary>
     public sealed class UiDocumentHost
     {
-        public string Name => throw new NotImplementedException();
+        internal UiDocumentHost(string name, UIDocument document, string source, bool worldSpace)
+        {
+            Name = name;
+            Document = document;
+            Source = source;
+            IsWorldSpace = worldSpace;
+        }
 
-        public UIDocument Document => throw new NotImplementedException();
+        public string Name { get; }
 
-        public VisualElement Root => throw new NotImplementedException();
+        public UIDocument Document { get; }
+
+        public VisualElement Root => Document.rootVisualElement;
 
         /// <summary>The UXML key the document came from, for error messages.</summary>
-        public string Source => throw new NotImplementedException();
+        public string Source { get; }
+
+        internal bool IsWorldSpace { get; }
 
         /// <summary>A missing element throws InvalidOperationException naming it, its type and <see cref="Source"/>.</summary>
-        public T Q<T>(string name) where T : VisualElement => throw new NotImplementedException();
+        public T Q<T>(string name) where T : VisualElement
+            => Root.Q<T>(name) ?? throw new InvalidOperationException($"UI element '{name}' ({typeof(T).Name}) is missing from {Source ?? Name}.");
 
-        public void SetVisible(bool visible) => throw new NotImplementedException();
+        public void SetVisible(bool visible) => Root.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
     }
 }

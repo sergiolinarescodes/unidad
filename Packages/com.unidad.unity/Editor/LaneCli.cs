@@ -1,5 +1,7 @@
 using System;
-using System.Collections.Generic;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using Debug = UnityEngine.Debug;
 
 namespace Unidad.Adapter.Editor
 {
@@ -10,53 +12,61 @@ namespace Unidad.Adapter.Editor
     public static class LaneCli
     {
         /// <summary>Exit 1 when <c>EditorUtility.scriptCompilationFailed</c>, else 0. No arguments.</summary>
-        public static void Compile() => throw new NotImplementedException();
+        public static void Compile() => BatchExit.Run("LaneCli.Compile", CompileFailure);
 
         /// <summary><c>AssetDatabase.Refresh(ForceSynchronousImport)</c>, then <see cref="Compile"/>'s check; exit 0/1. No arguments.</summary>
-        public static void Import() => throw new NotImplementedException();
+        public static void Import() => BatchExit.Run("LaneCli.Import", () =>
+        {
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            return CompileFailure();
+        });
 
         /// <summary>
         /// Opens a scene and enters Play mode (the interactive testbed; settings travel in <c>UNIDAD_LAUNCH</c>).
         /// Arguments: <c>-unidadScene &lt;Assets/...unity&gt;</c> (required).
         /// </summary>
-        public static void PlayScene() => throw new NotImplementedException();
+        public static void PlayScene()
+        {
+            try
+            {
+                var scene = new CliArgs(Environment.GetCommandLineArgs()).Required("-unidadScene");
+                EditorSceneManager.OpenScene(scene);
+                EditorApplication.EnterPlaymode();
+                Debug.Log($"UNIDAD LaneCli.PlayScene ok {scene}");
+            }
+            catch (Exception e)
+            {
+                BatchExit.Finish("LaneCli.PlayScene", e.Message);
+            }
+        }
+
+        private static string CompileFailure() => EditorUtility.scriptCompilationFailed ? "scripts have compile errors" : null;
     }
 
-    /// <summary>What <see cref="BuildCli.Build"/> builds.</summary>
-    public sealed record BuildCliOptions(string OutputFolder, string ExeName, IReadOnlyList<string> Scenes, bool Development, bool Release = false);
-
-    /// <summary>What a build produced; also written to <c>&lt;out&gt;/build-report.txt</c>.</summary>
-    public sealed record BuildCliResult(bool Succeeded, long TotalBytes, int Errors, int Warnings, double Seconds, string ExePath);
-
-    public static class BuildCli
+    /// <summary>The one-line result and exit code every batch entry ends with.</summary>
+    internal static class BatchExit
     {
-        /// <summary>A StandaloneWindows64 CoreCLR player; writes <c>&lt;out&gt;/build-report.txt</c>.</summary>
-        public static BuildCliResult Build(BuildCliOptions options) => throw new NotImplementedException();
+        /// <param name="work">Returns null on success, else the failure reason; a throw is a failure too.</param>
+        public static void Run(string what, Func<string> work)
+        {
+            string failure;
+            try
+            {
+                failure = work();
+            }
+            catch (Exception e)
+            {
+                failure = $"{e.GetType().Name}: {e.Message}";
+            }
 
-        /// <summary>
-        /// Batch entry point. Arguments:
-        /// <c>-buildOut &lt;dir&gt;</c> (required) the output folder;
-        /// <c>-development</c> a development player;
-        /// <c>-scene &lt;path&gt;</c> (repeatable) the scenes, default the enabled build-settings scenes;
-        /// <c>-release</c> a release player.
-        /// Writes <c>&lt;dir&gt;/build-report.txt</c>; exit 0 when the build succeeded, 1 when it failed.
-        /// </summary>
-        public static void Player() => throw new NotImplementedException();
-    }
+            Finish(what, failure);
+        }
 
-    /// <summary>Writes the framework's committed assets (the overlay PanelSettings).</summary>
-    public static class FrameworkAssets
-    {
-        public static void Write() => throw new NotImplementedException();
-    }
-
-    /// <summary>Sandbox recipes for the Movement sample.</summary>
-    public static class SampleRecipes
-    {
-        /// <summary>Imports the "Movement" sample into Assets/Samples.</summary>
-        public static void ImportMovement() => throw new NotImplementedException();
-
-        /// <summary>Writes Assets/Scenes/Movement.unity with one "[Boot]" object and adds it to the build settings.</summary>
-        public static void BuildMovementScene() => throw new NotImplementedException();
+        /// <summary>Logs <c>UNIDAD &lt;what&gt; ok|fail &lt;reason&gt;</c>; in batch mode exits 0 or 1.</summary>
+        public static void Finish(string what, string failure)
+        {
+            Debug.Log(failure == null ? $"UNIDAD {what} ok" : $"UNIDAD {what} fail {failure}");
+            if (UnityEngine.Application.isBatchMode) EditorApplication.Exit(failure == null ? 0 : 1);
+        }
     }
 }
