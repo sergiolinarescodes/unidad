@@ -937,3 +937,12 @@ Where the type is absent, it keeps every assembly.
 2026-10-20, f1-adapter-runtime. F0 did not declare `RecordingEventBus`/`HistoryService` (f1-core-runtime ports them).
 Until they land, `RecordEventHistory` logs a warning and binds the plain bus; the first sync after both PRs merge wraps
 the bus and binds `IHistoryService` with recording started.
+
+## U-119 The release scripts' edges
+
+2026-10-20, f2-release-tooling. `replay-divergences.ps1` diffs the game at the sync start S (not its later tip) against
+the carried tag and reads the Divergences rows at S, so a framework edit merged after S is never replayed early: the
+carry's `-Since S` keeps it and its row. It refuses (exit 2; 1 is usage) uncovered drift, a changed analyzer DLL and a
+`package.json` version/dependency edit. `carry-unidad.ps1` mirrors `tools/` with deletions (a game-only tool must be in
+`gameTools`) and stages its result without committing. `sandbox-gate.ps1` holds the editor lock across the lane's
+`-Compile` and `-Bee`; the lane re-enters an inherited `UNIDAD_EDITOR_LOCK_OWNER` instead of queueing behind it.
