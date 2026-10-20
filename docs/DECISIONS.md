@@ -625,3 +625,46 @@ Sine curves included; a `Timeline` beat added behind beats already fired fires o
 `Timeline.Complete` never moves `Time` backwards; `Typewriter` compares its budget with a 1e-5 s tolerance so float
 sums of `1/CharsPerSecond` do not drop a character; `ShakeSpec.Sample` replays `DeterministicRandom(Seed)` per sample
 instead of caching, since the spec is a value type.
+
+## U-150 Analyzers run only on our assemblies
+
+2026-10-20, f1-analyzers. Every rule bails out at compilation start unless `Compilation.AssemblyName` starts with
+`Unidad.` or `Cds.`. If Unity applies a package-folder analyzer to every assembly (open check C2), UD002/UD014 would
+otherwise fail URP, Input System and ugui. The prefix also covers `Cds.*.Smoke` and `*.Check`. Reversible: one constant
+(`SymbolFacts.IsAnalyzed`).
+
+## U-151 Attributes and exempt types are matched by name, never by reference
+
+2026-10-20, f1-analyzers. The analyzer references no Unity or Unidad assembly. `DeterministicSimulation`, `BurstSubset`
+and `ProcessOverride` match by simple class name (with or without `Attribute`) in any namespace, because `Cds.Sim` owns
+its own copies. Unity symbols match by exact namespace plus type name, through the semantic model, so a domain type named
+`Input`, `Time` or `Random` is never flagged. Exempt types match by simple name (`GameObjectFactory`, `ComponentPool`,
+`SceneLoader`, `*InputBridge`, `PickService`, nested types included); `AssetLibrary` by full name
+`Unidad.Adapter.AssetLibrary`.
+
+## U-152 An Editor assembly is one whose name ends in `.Editor`
+
+2026-10-20, f1-analyzers. `Unidad.Adapter.Editor`, `Cds.Editor`. UD010 and UD011 skip them, so lane recipes may
+instantiate, use `AssetDatabase` and load resources.
+
+## U-153 The analyzer DLL carries no commit stamp
+
+2026-10-20, f1-analyzers. The .NET SDK writes the HEAD commit into `AssemblyInformationalVersion`, so the same source
+built at two commits gave two DLLs and `analyzers/build.ps1 -Check` could never pass after a commit. `build.ps1` passes
+`-p:IncludeSourceRevisionInInformationalVersion=false` in both modes; with `Deterministic`, `DebugType none` and `PathMap`
+the DLL is byte-identical from any slot path (checked from a scratch copy). Always publish through `build.ps1`, not a bare
+`dotnet build -p:UnidadPublishAnalyzer=true`.
+
+## U-154 UD014: read-only shapes in the collection namespaces are not mutable
+
+2026-10-20, f1-analyzers. A `static readonly` field typed as `IEnumerable`, `IEnumerator`, `IComparer`,
+`IEqualityComparer`, `Comparer`, `EqualityComparer`, `KeyValuePair` or `IStructural*` holds no collection state of its own,
+so it is allowed beside the `IReadOnly*` interfaces. Everything else in `System.Collections(.Generic|.Concurrent)`, any
+array and `StringBuilder` is flagged. Field-like events are found by their declarator syntax, auto-properties (and
+`field`-backed ones) by their compiler backing field.
+
+## U-155 Two message shapes follow the analyzer-authoring rules
+
+2026-10-20, f1-analyzers. RS1032 (warnings are errors) wants a one-sentence message without a trailing period, so UD015
+reads `'{0}' is outside the Burst subset: {1}`. UD011's AssetDatabase variant is a second descriptor with the same id,
+title, category and severity: `'{0}' uses {1}. AssetDatabase is editor-only; use it in an *.Editor assembly.`
