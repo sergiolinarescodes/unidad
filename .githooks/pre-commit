@@ -3,4 +3,4 @@
 set -e
 root="$(git rev-parse --show-toplevel)"
 bash "$root/tools/unity-metas.sh"
-pwsh -NoProfile -File "$root/tools/asmdef-parity.ps1" -Root "$root"   # git sets GIT_DIR for hooks, so show-toplevel from tools/ would lie
+pwsh -NoProfile -File "$root/tools/asmdef-parity.ps1" -Root "$root"

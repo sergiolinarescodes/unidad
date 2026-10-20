@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="DebugWindow.uss" />
+    <ui:VisualElement name="window" class="unidad-debug">
+        <ui:Label name="title" text="DEBUG MODE" class="unidad-debug__title" />
+        <ui:TabView name="tabs" class="unidad-debug__tabs" />
+    </ui:VisualElement>
+</ui:UXML>

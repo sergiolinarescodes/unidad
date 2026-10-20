@@ -39,6 +39,11 @@ namespace Unidad.Core.Content
         }
 
         /// <summary>The layer a layered path names: "mymod:Cards/x.json" gives "mymod"; a base path gives null.</summary>
-        public static string LayerOf(string path) => throw new NotImplementedException();
+        public static string LayerOf(string path)
+        {
+            if (path == null) throw new ArgumentNullException(nameof(path));
+            int colon = path.IndexOf(':');
+            return colon > 0 ? path.Substring(0, colon) : null;
+        }
     }
 }
