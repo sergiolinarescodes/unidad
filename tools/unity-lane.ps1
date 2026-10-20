@@ -165,7 +165,7 @@ try {
         if ([IO.Path]::GetFullPath($callerRoot) -in @([IO.Path]::GetFullPath($main), [IO.Path]::GetFullPath($slotPath))) {
             Write-Host "lane: -Collect copies into the caller's worktree; run it from your code slot, not $callerRoot"; return 2
         }
-        $repoRoots = Resolve-CollectRoots @($Roots | ForEach-Object { $_ -split ',' } | Where-Object { $_ }) $cfg.projectSubdir
+        $repoRoots = @(Resolve-CollectRoots @($Roots | ForEach-Object { $_ -split ',' } | Where-Object { $_ }) $cfg.projectSubdir)
         $lines = @(git -C $slotPath -c core.quotepath=off status --porcelain=v1 --untracked-files=all -- @repoRoots)
         foreach ($c in Select-CollectPaths $lines $repoRoots) {
             $dst = Join-Path $callerRoot $c.Path
