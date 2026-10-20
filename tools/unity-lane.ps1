@@ -258,6 +258,8 @@ try {
                 $line = ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Base $base -Extra $extra
                 Write-Host "lane: $exe $((Get-PlayerRunArgs $line) -join ' ')"
                 $r = Invoke-Captured $exe (Get-PlayerRunArgs $line) ($caps.run * 60) $buildDir
+                [IO.File]::WriteAllLines((LogFile 'run'), [string[]]$r.Lines)
+                Write-Host "lane: player log $(LogFile 'run')"
                 if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report | Out-Host }
                 Write-Host "lane: player exit $($r.Code)"
                 $exitCode = switch ($r.Code) { 124 { 3 } 125 { 4 } default { $r.Code } }
