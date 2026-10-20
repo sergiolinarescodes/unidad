@@ -14,3 +14,6 @@ public readonly record struct VoiceBlipEvent(VoiceBlip Blip);
 
 /// <summary>The speech voice was asked to go quiet now.</summary>
 public readonly record struct VoiceStoppedEvent;
+
+/// <summary>A cue id with no catalogue row was played; published once per id, so a strict boot can report it.</summary>
+public readonly record struct UnknownSoundEvent(string Id);

@@ -580,3 +580,69 @@ assembly, the surface of the spec its F1 implementer builds against, plus the me
   `-development`, `-scene`, `-release`; writes `build-report.txt`; exit 0/1).
 
 Reversible: a shape can still change by a unidad PR before `f4-release-pre1` tags.
+
+## U-161 Generic text has in-code English defaults; locales fall back to English
+
+2026-10-20, f1-modules (D-U2). The nine `TextKeys.Generic` rows ship in code (`TextDefaults.English()`), used only for keys
+no file defines, so a game needs no framework text file and can still override them. A non-`en` table falls back row by
+row to the merged English table, then to the defaults. 10 shipped a `text.en.json` every game had to copy.
+
+## U-162 The launch line is `--set key=value` only
+
+2026-10-20, f1-modules (D-U3). `--movie`, `--pause-at`, `--vsync` are gone; `--frames` and `--save-dir` are the keys
+`frames` and `save.dir`. `LaunchLine.Read` is engine-free: everything after the first `--` in the process arguments, else
+the `UNIDAD_LAUNCH` string split on whitespace with double quotes (an unterminated quote is an error).
+
+## U-163 Save keeps unknown sections and writes atomically with one backup
+
+2026-10-20, f1-modules (D-U4, implements U-136). Sections no participant claims are deep-cloned on Loaded and written
+first on every save. `FileSaveStore` writes `slot0.json.tmp`, then `File.Replace(tmp, slot, slot.bak)` when the slot
+exists, else `File.Move`; `UnauthorizedAccessException` becomes `IOException`.
+
+## U-164 `fresh` starts without reading; `HasSave` feeds a title card
+
+2026-10-20, f1-modules (D-U5). `StartFresh()` returns and publishes `NoSave` "fresh start" and allows writing; the first
+write moves the old slot to `slot0.json.bak`. `HasSave` is true when the store holds a slot, unreadable included.
+
+## U-165 Autosave counts tick time and coalesces
+
+2026-10-20, f1-modules (D-U6, implements U-135). The periodic timer adds the `Tick(dt)` it is given; `IAutosave` no longer
+needs `ITimeProvider`. Any number of `AutosaveAfter`/`On` events before one tick make one save.
+`AutosaveTuning.PeriodSeconds <= 0` disables the periodic save.
+
+## U-166 Sound rows may be declared silent; UI cues renamed; unknown cues are reported
+
+2026-10-20, f1-modules (D-U7). A row without `stream` is a known id that plays nothing and logs nothing. The catalogue is
+content: every `sounds.json` / `sounds.*.json` merged through `ContentJson.Catalogue` (none is fine), a volume outside 0..1
+refused naming the file. `UiCues` are `ui.pause.open`, `ui.pause.close`, `ui.click`, `ui.hover`. `Play(SoundId)` plays on
+the row's bus. An id with no row is logged once and publishes `UnknownSoundEvent(Id)` once, the hook a game's strict
+mode subscribes to. `PlayMusic` of an unknown or silent id leaves `CurrentMusic` unchanged (10 set it to silence).
+
+## U-167 Focus layers are numbers the game extends
+
+2026-10-20, f1-modules (D-U8). The framework keeps `None 0`, `World 10`, `Modal 200`; `FlowInput.BackAllowed(focus)` is
+true only at or below `World`. `FlowInstaller` also binds `IInputFocusService` (10 had a separate installer).
+
+## U-168 `SceneId` is a string record
+
+2026-10-20, f1-modules (D-U9). `readonly record struct SceneId(string Value)`, registered by the game; 10's enum is gone.
+
+## U-169 `SaveRead` gains `Int`, `Long`, `Enum<T>` and `Array`
+
+2026-10-20, f1-modules (D-U10). `Enum<T>` takes a defined NAME only; numeric text is refused. `Object(section, field)`
+joins `Object(node, what)`.
+
+## U-170 `MemoryContentSource` is public
+
+2026-10-20, f1-modules (D-U11, already so in core per U-50). Every smoke test feeds inline JSON through it.
+
+## U-171 Installers load their own content
+
+2026-10-20, f1-modules (D-U12). `TextInstaller` binds `TextTable` from `TextContent.Load(IContentSource,
+ResolveAll<TextKeySet>(), locale)` (locale from a bound `LaunchArgs`, else `en`); `AudioInstaller` binds `SoundCatalog`
+from the source. The adapter binds `IContentSource` and `LaunchArgs` and loads no text itself.
+
+## U-172 Generic launch keys are declared by the module that reads them
+
+2026-10-20, f1-modules (D-U13). Launch: `seed`, `frames`, `strict`, `history`, `debug.open`, `anim.skip`. Save:
+`save.dir`, `fresh`. Text: `locale`. Audio: `mute`. A game declares its own (`start`, `date`, ...).

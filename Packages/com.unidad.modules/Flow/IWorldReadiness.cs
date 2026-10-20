@@ -28,20 +28,39 @@ namespace Unidad.Flow
     /// </summary>
     public sealed class SettledReadiness : IWorldReadiness, ITickable
     {
-        public SettledReadiness(Func<bool> busy, int settledTicks = FlowTuning.SettledTicks) => throw new NotImplementedException();
+        private readonly Func<bool> _busy;
+        private readonly int _needed;
+        private int _quiet;
 
-        public bool IsReady => throw new NotImplementedException();
+        public SettledReadiness(Func<bool> busy, int settledTicks = FlowTuning.SettledTicks)
+        {
+            _busy = busy ?? throw new ArgumentNullException(nameof(busy));
+            _needed = Math.Max(1, settledTicks);
+        }
 
-        public void Tick(float deltaTime) => throw new NotImplementedException();
+        public bool IsReady => _quiet >= _needed;
+
+        public void Tick(float deltaTime)
+        {
+            if (IsReady) return;
+            _quiet = _busy() ? 0 : _quiet + 1;
+        }
     }
 
     /// <summary>Streaming may time out; required resources may not. Shared by every production scene.</summary>
     public sealed class RequiredReadiness : IWorldReadiness
     {
-        public RequiredReadiness(IWorldReadiness world, Func<bool> prepared) => throw new NotImplementedException();
+        private readonly IWorldReadiness _world;
+        private readonly Func<bool> _prepared;
 
-        public bool IsReady => throw new NotImplementedException();
+        public RequiredReadiness(IWorldReadiness world, Func<bool> prepared)
+        {
+            _world = world ?? throw new ArgumentNullException(nameof(world));
+            _prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
+        }
 
-        public bool CanTimeout => throw new NotImplementedException();
+        public bool IsReady => _prepared() && _world.IsReady;
+
+        public bool CanTimeout => _prepared() && _world.CanTimeout;
     }
 }

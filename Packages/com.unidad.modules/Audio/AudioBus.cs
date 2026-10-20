@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace Unidad.Audio
@@ -24,6 +23,13 @@ namespace Unidad.Audio
         /// <summary>Master first: a child bus exists only once its parent does.</summary>
         public static IReadOnlyList<AudioBus> All { get; } = new[] { AudioBus.Master, AudioBus.Music, AudioBus.Sfx, AudioBus.Ui, AudioBus.Voice };
 
-        public static string NameOf(AudioBus bus) => throw new NotImplementedException();
+        public static string NameOf(AudioBus bus) => bus switch
+        {
+            AudioBus.Music => Music,
+            AudioBus.Sfx => Sfx,
+            AudioBus.Ui => Ui,
+            AudioBus.Voice => Voice,
+            _ => Master,
+        };
     }
 }
