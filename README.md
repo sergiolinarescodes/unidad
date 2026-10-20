@@ -1,104 +1,44 @@
 # Unidad
 
-Unity framework core library. Opinionated, Reflex-DI based building blocks for game-side service code:
+Unidad 2.0 is a Unity framework with an engine-free core: plain C# (netstandard2.1, C# 14) for the container, events,
+ticking, content, save, text, audio, flow and launch, plus one Unity adapter that hosts it in a scene. It is a port of
+the Godot edition (`10-unidad-godot`), so game rules build and smoke-test with `dotnet` and Unity is only needed for
+the view.
 
-- **EventBus** — strongly-typed publish/subscribe over value-type event structs
-- **SystemServiceBase** — service base class with automatic subscription lifecycle
-- **Reflex DI integration** — installer pattern via `ISystemInstaller`
-- **ITickable** — explicit per-frame stepping (no `MonoBehaviour.Update` soup)
-- **IGameObjectFactory** + `GameObjectPool<T>` + `PoolRegistry` — pooled instantiation
-- **ModifierStack** + `IModifier<TValue>` — stackable stat/value modifiers
-- **RegistryBase<TKey, TValue>** — typed entity registries
-- **IState / StateMachine** — phase/turn state machines
-- **IContributor** — scorer-based decision authoring (used for AI behavior)
-- **Grid utilities** — coordinate maths, validation, iteration helpers
-- **Scenario test harness** — `DataDrivenScenario`, `TestScenarioDefinition`, `ManualTimeProvider`, `InstantAnimationResolver`, `MockEventBus`, `TestEventBus`
-- **Debug providers** — `IDebugProvider` + `DebugModeService` for in-Editor inspection
-- **Bootstrap** — `UnidadBootstrap` MonoBehaviour spawns `TickRunner` and wires the Reflex container
+Three packages, always released together with one version:
 
-## Installation
+| Package | Assembly | What |
+|---|---|---|
+| `com.unidad.core` | `Unidad.Core` | engine-free kernel: DI, events, ticking, content, motion, randomness, diagnostics, analyzers |
+| `com.unidad.modules` | `Unidad.Flow`, `Unidad.Save`, `Unidad.Text`, `Unidad.Audio`, `Unidad.Launch` | engine-free generic modules |
+| `com.unidad.unity` | `Unidad.Adapter` | the Unity adapter, the modules' Unity hosts, the picoCAD model import |
 
-### As a Unity Package Manager (UPM) git dependency
+## Install (Unity 7000.0+)
 
-Add to your project's `Packages/manifest.json`:
+The recommended way is an embedded copy: `git archive <tag> Packages/com.unidad.core Packages/com.unidad.modules
+Packages/com.unidad.unity` into your project's `Packages/` (games carry it with `tools/carry-unidad.ps1`). As git
+dependencies, add all three to `Packages/manifest.json`:
 
 ```json
-{
-  "dependencies": {
-    "com.unidad.core": "https://github.com/sergiolinarescodes/unidad.git"
-  }
-}
+"com.unidad.core":    "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.core#v2.0.0",
+"com.unidad.modules": "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.modules#v2.0.0",
+"com.unidad.unity":   "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.unity#v2.0.0"
 ```
 
-### As an embedded local package (recommended for active development)
+Until 2.0.0 ships, use the newest `v2.0.0-pre.N` tag instead of `v2.0.0`.
 
-Clone into your project's `Packages/` directory and reference by path:
+## 0.x
 
-```bash
-cd <your-unity-project>/Packages/
-git clone https://github.com/sergiolinarescodes/unidad.git com.unidad.core
-```
+Unidad 0.1.0 (Reflex, Unity 6000.0, the repo root as the package) stays at tag `v0.1.0`:
+`"com.unidad.core": "https://github.com/sergiolinarescodes/unidad.git#v0.1.0"`. Fixes land on `release/0.x` as
+`v0.1.N`. Moving from 0.1.0 to 2.0: [docs/MIGRATING-0.x.md](docs/MIGRATING-0.x.md).
 
-Then in `Packages/manifest.json`:
+## Kept for the picoCAD pipeline
 
-```json
-{
-  "dependencies": {
-    "com.unidad.core": "file:com.unidad.core"
-  }
-}
-```
-
-### As a git submodule (for syncing across multiple projects)
-
-```bash
-git submodule add https://github.com/sergiolinarescodes/unidad.git Packages/com.unidad.core
-```
-
-## Quick Start
-
-```csharp
-public sealed class GameBootstrap : UnidadBootstrap
-{
-    protected override void RegisterInstallers(ContainerBuilder builder)
-    {
-        builder.AddSystemInstaller(new YourSystemInstaller());
-    }
-}
-```
-
-```csharp
-public interface IYourService { void DoThing(); }
-
-internal sealed class YourService : SystemServiceBase, IYourService
-{
-    public YourService(IEventBus bus, ITimeProvider time) : base(bus) { }
-
-    public void DoThing() => Publish(new ThingHappenedEvent());
-}
-
-public readonly record struct ThingHappenedEvent;
-
-public sealed class YourSystemInstaller : ISystemInstaller
-{
-    public void Install(ContainerBuilder builder)
-    {
-        builder.AddSingleton<IYourService, YourService>();
-    }
-
-    public ISystemTestFactory CreateTestFactory() => new YourTestFactory();
-}
-```
-
-## Requirements
-
-- Unity 6.0 LTS (6000.0+)
-- Reflex DI (`com.gustavopsantos.reflex`)
-
-## Used By
-
-- [unity-ppo-racing-trainer](https://github.com/sergiolinarescodes/unity-ppo-racing-trainer) — open-source PPO car racing agents in Unity ML-Agents (real-world consumer reference)
+`Tools~/`, `Skills~/` and `Documentation~/model-pipeline/` stay at the root, byte-identical to 0.1.0, because the global
+`picocad-model` skill clones `main` and reads them. They still describe 0.1.0 paths on purpose; changing them needs the
+global skill changed in the same step (U-01, U-112). `tools/release-check.ps1 -Check KeptTrees` guards them.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

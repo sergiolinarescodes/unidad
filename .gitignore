@@ -2,11 +2,29 @@
 .vs/
 .idea/
 .vscode/
-*.sln
-*.csproj
 *.user
 *.suo
-
 # OS
 .DS_Store
 Thumbs.db
+# Unity (any project folder: Sandbox/ and the seed)
+[Ll]ibrary/
+[Tt]emp/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Bb]uild/
+*.gen.csproj
+# dotnet
+bin/
+obj/
+global.json
+# Root solution files Unity writes (the sidecar's dotnet/*.slnx is committed; csproj files are committed)
+/*.slnx
+/*.sln
+# Sandbox (Unity project used only by tools/sandbox-gate.ps1)
+Sandbox/Assets/Samples/
+Sandbox/Assets/Scenes/
+Sandbox/*.slnx
+Sandbox/*.csproj
+Sandbox/NuGet.config
+Sandbox/Main.EntryPoint.csproj

@@ -1,0 +1,12 @@
+* text=auto
+# Kept 0.1.0 trees are LF blobs pinned by hash (tools/release-check.ps1 -Check KeptTrees): never renormalise them.
+Tools~/** -text
+Skills~/** -text
+Documentation~/** -text
+docs/DECISIONS.md merge=union
+docs/SOURCES.md merge=union
+*.unity merge=unityyamlmerge
+*.prefab merge=unityyamlmerge
+*.asset merge=unityyamlmerge
+*.meta merge=unityyamlmerge eol=lf
+*.dll binary
