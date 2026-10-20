@@ -617,3 +617,11 @@ carry `#pragma warning disable UD014` (immutable after type init), `Log._current
 static field exists in core. `Math.ScaleB` is not in netstandard2.1, so `DetMath.Exp` multiplies by exact powers of two
 built from the exponent bits, in two halves outside [-1022, 1023] so only the last multiply rounds (the smoke test pins
 `Exp(1)`, the subnormal `Exp(-740)` and `Exp(-745.3) == 0`).
+## U-145 Content and Motion edge rules
+
+2026-10-20, f1-core-content-motion (D-core-2 is U-120). Bodies follow `unidad-core` §c.5 and §c.6, with these calls the
+spec leaves open: `Easing.Evaluate` returns exactly 0 at t <= 0 (and NaN) and exactly 1 at t >= 1 for every curve, the
+Sine curves included; a `Timeline` beat added behind beats already fired fires on the next `Advance`, after them;
+`Timeline.Complete` never moves `Time` backwards; `Typewriter` compares its budget with a 1e-5 s tolerance so float
+sums of `1/CharsPerSecond` do not drop a character; `ShakeSpec.Sample` replays `DeterministicRandom(Seed)` per sample
+instead of caching, since the spec is a value type.
