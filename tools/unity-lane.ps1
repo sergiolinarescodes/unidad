@@ -242,6 +242,9 @@ try {
             $stampText = if (Test-Path -LiteralPath $stampFile) { Get-Content -Raw -LiteralPath $stampFile }
             if ($Player -or !(Test-BuildReusable $stampText $sha (Test-Path -LiteralPath $exe))) {
                 if (Test-Path -LiteralPath $stampFile) { Remove-Item -LiteralPath $stampFile -Force }
+                # An MSBuild-mode compile leaves its own ScriptAssemblies, whose partial-class field order can differ from
+                # Bee's player build ("script class layout is incompatible"); the build editor recompiles them with Bee.
+                Remove-Item -LiteralPath "$proj/Library/ScriptAssemblies" -Recurse -Force -ErrorAction SilentlyContinue
                 $code = Unity 'player' $caps.player (Get-UnityArgs 'player' $proj (LogFile 'player') -Method $cfg.lane.playerBuildMethod -BuildOut $buildDir -Release:$Release)
                 if ($code -ne 0 -or !(Test-Path -LiteralPath $exe)) { Write-Host "lane: player build exit $code"; $exitCode = $(if ($code -ge 3) { $code } else { 1 }); break }
                 [IO.File]::WriteAllText($stampFile, $sha)
