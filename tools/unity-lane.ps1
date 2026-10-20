@@ -126,7 +126,8 @@ try {
 
     $editor = try { Resolve-UnityEditor $proj $UnityPath $cfg.editorVersion } catch { Write-Host "lane: $($_.Exception.Message)"; exit 2 }
     $dotnet = Resolve-UnityDotnet $editor
-    $owner = "lane:${repo}:${slotName}:$PID"
+    # inside sandbox-gate's hold, re-enter it (U-55)
+    $owner = if ($env:UNIDAD_EDITOR_LOCK_OWNER) { $env:UNIDAD_EDITOR_LOCK_OWNER } else { "lane:${repo}:${slotName}:$PID" }
     $stamp = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')
     New-Item -ItemType Directory -Force (Join-Path $proj 'Logs') | Out-Null
     function LogFile([string]$m) { "$proj/Logs/lane-$m-$stamp.log" }
