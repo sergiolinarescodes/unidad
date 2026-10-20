@@ -10,6 +10,7 @@ rewrite them.
 | 10-unidad-godot | 977cacd | Unidad.Core, the generic modules (Flow, Save, Text, Audio, Launch), the analyzers, tools, ported to netstandard2.1 + C# 14 |
 | unidad 0.1.0 | ad1524f | the picoCAD import half (`Editor/PicoCad`, `ModelCatalog`) ported into `com.unidad.unity`; `Tools~/`, `Skills~/`, `Documentation~/model-pipeline/` kept byte-identical |
 | 10-unidad-godot | 977cacd | `Samples/Movement` ported to `com.unidad.unity/Samples~/Movement` (Logic + View): engine-free service, Fixed-group TickBinding, StageBootstrap, UI Toolkit host, Input System bridge |
+| 11#1 | `tools/unity-lane.ps1` | sync-unidad-1-up (11 at 7ac90d5): `-Status` names its claim record `$slotClaim` (`$claim` bound to the `-Claim` switch, case-blind, and crashed whenever a slot was claimed); the postCompileCheck method probe greps `*.cs` only (a spec quoting the signature ran a missing method) |
 
 ## Divergences
 

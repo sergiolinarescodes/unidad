@@ -42,12 +42,12 @@ if ($Status) {
     Show-EditorLockQueue (Get-EditorLockDir)
     foreach ($s in @($cfg.unitySlots) + $cfg.loopSlot + $cfg.testbedSlot) {
         $lock = Read-LockRecord (Get-SlotLockPath $repo $s)
-        $claim = Read-SlotClaim $repo $s
+        $slotClaim = Read-SlotClaim $repo $s   # not $claim: PowerShell names are case-blind and -Claim is a switch
         $path = Get-SlotPath $cfg $parent $s
         $state = if (Test-Path -LiteralPath $path) { Read-LaneState (Get-UnityProjectPath $cfg $path) } else { $null }
         Write-Host ("[slot] {0}  {1}  lock: {2}  claim: {3}  compile: {4}  bee: {5}" -f $s, $(if ($state) { $path } else { '(not created)' }),
             $(if ($lock -and !(Test-LockStale $lock)) { "$($lock.Branch) $($lock.Mode) pid $($lock.Pid) since $($lock.Started)" } else { 'free' }),
-            $(if ($claim) { "$($claim.ClaimedBy) (last used $($claim.LastUsed))" } else { 'none' }),
+            $(if ($slotClaim) { "$($slotClaim.ClaimedBy) (last used $($slotClaim.LastUsed))" } else { 'none' }),
             $(if ($state.LastCompile) { "$($state.LastCompile.Result) at $($state.LastCompile.Sha)" } else { '-' }),
             $(if ($state.LastBee) { "$($state.LastBee.Result) at $($state.LastBee.Sha)" } else { '-' }))
     }
@@ -204,7 +204,7 @@ try {
                     $hit = (Test-MatchesAny $changed @($check.whenPaths)) -or ($check.whenDiffMatches -and $diff -match $check.whenDiffMatches)
                     if (!$hit) { continue }
                     $leaf = ($check.method -split '\.')[-1]
-                    git -C $slotPath grep -q -E "static\s+void\s+$leaf\s*\(" 2>$null
+                    git -C $slotPath grep -q -E "static\s+void\s+$leaf\s*\(" -- '*.cs' 2>$null   # only code: specs quote the signature
                     if ($LASTEXITCODE -ne 0) { Write-Warning "lane: postCompileCheck $($check.name): $($check.method) does not exist yet; skipped"; continue }
                     $code = Unity 'exec' $caps.exec (Get-UnityArgs 'exec' $proj (LogFile $check.name) -Method $check.method)
                     Write-Host "lane: postCompileCheck $($check.name) exit $code"
