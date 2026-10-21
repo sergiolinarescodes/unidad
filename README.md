@@ -25,8 +25,6 @@ dependencies, add all three to `Packages/manifest.json`:
 "com.unidad.unity":   "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.unity#v2.0.0"
 ```
 
-Until 2.0.0 ships, use the newest `v2.0.0-pre.N` tag instead of `v2.0.0`.
-
 ## 0.x
 
 Unidad 0.1.0 (Reflex, Unity 6000.0, the repo root as the package) stays at tag `v0.1.0`:
