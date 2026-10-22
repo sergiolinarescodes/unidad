@@ -97,6 +97,11 @@ try {
     Remove-Item $older
     $after = Invoke-WithEditorLock -Owner 'smoke-c' -WaitMinutes 0.1 -ScriptBlock { 'got it' }
     Assert ($inner -eq 'inner' -and $waited -and $after -eq 'got it' -and !(Test-Path (Join-Path (Get-EditorLockDir) 'unity-editor.lock'))) 'EditorLock_ReentrantPerOwner_FifoAcrossOwners'
+    if ($IsWindows) {
+        $pwshDir = Split-Path (Get-Process -Id $PID).Path -Parent
+        $child = & (Get-Process -Id $PID).Path -NoProfile -Command "`$env:PATH = 'C:\WINDOWS\system32;C:\Program Files\Git\cmd;$pwshDir'; . '$tools/lib/UnidadTools.ps1'; (Get-Command bash).Source"
+        Assert ($child -notmatch 'System32|WindowsApps' -and $child -like '*\bin\bash.exe') 'Tools_BashResolvesToGitBash_EvenWithSystem32First'
+    }
 } catch {
     Write-Host "FAIL (threw) $($_.Exception.Message) at $($_.InvocationInfo.ScriptLineNumber)"; $failed++
 } finally {
