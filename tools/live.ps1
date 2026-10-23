@@ -288,7 +288,7 @@ try {
     $envs = @{ UNIDAD_LAUNCH = $launch; UNIDAD_LIVE_DOOR = $cfg.lane.testbedMethod; UNIDAD_LIVE_TOUCH = $touch; UNIDAD_LIVE_SIZE = $live.size
         UNIDAD_LIVE_IDLE_SECONDS = "$([int]($idle * 60))"; UNIDAD_LIVE_CAP_SECONDS = "$([int]($cap * 60))"
         UNIDAD_LIVE_TITLE = "[live $repo/${Branch}: closes itself after $idle min idle]" }
-    # `start /min` (in Start-LiveEditor): no console handle, so the editor outlives this script; minimised, never focused.
+    # Start-LiveEditor: no inherited handles (the editor outlives this script), never activated, parked off-screen.
     foreach ($k in $envs.Keys) { Set-Item "env:$k" $envs[$k] }
     $script:hideWindows = $true
     $p = Start-LiveEditor $editor $proj $log
