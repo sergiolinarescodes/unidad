@@ -1,0 +1,8 @@
+{
+  "name": "com.unidad.live",
+  "displayName": "Unidad Live (overlay)",
+  "version": "0.0.1",
+  "unity": "6000.0",
+  "description": "Written into a live slot by tools/live.ps1 and git-excluded there; never committed to a game. Serves the live.* commands of the Unity CLI.",
+  "dependencies": { "com.unity.pipeline": "0.9.1-exp.1" }
+}

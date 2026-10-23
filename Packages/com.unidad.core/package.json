@@ -1,6 +1,6 @@
 {
   "name": "com.unidad.core",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "displayName": "Unidad Core",
   "unity": "7000.0",
   "description": "Engine-free core of the Unidad framework: DI, event bus, ticking, registries, content JSON, motion.",

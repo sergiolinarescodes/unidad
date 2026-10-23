@@ -7,7 +7,8 @@ An open branch is previewed as a detached, uncommitted merge of the default bran
 branch shows the default branch ("<b> merged at <sha>; showing <main>"). An earlier testbed editor this script opened is
 closed first. The editor lock is held only for the compile step; then the GUI editor opens as the user's (never capped
 or killed by the tools) with -executeMethod <lane.testbedMethod> and UNIDAD_LAUNCH = the launch line. -Player builds a
-player instead and opens it windowed, or with -Frames N runs it headless and exits with its code. Everything is passed
+player instead and opens it windowed, or with -Frames N runs it headless and exits with its code. Only a -Frames run
+gets the boot report (frames, fresh=true, report=; lane.playerBootArgs), since only it can write one. Everything is passed
 as --set (U-44): -Start x is --set start=x; -Set is one string split only before a key=.
 An agent never opens a window: in an agent session only -Player -Frames N runs. Exit: 0 launched (or the self-quit run's
 own code); 1 the precheck compile or the merge failed; 2 environment; 4 STOP; 5 the slot is open in another editor.
@@ -29,14 +30,10 @@ if ((Test-AgentSession) -and !($Player -and $Frames -gt 0)) {
     Write-Host '[testbed] An agent never opens a window: leave the Testbed line for the owner, or run -Player -Frames N'
     exit 2
 }
-try { $line = ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames } catch { Write-Host "[testbed] $($_.Exception.Message)"; exit 2 }
-
 $main = Get-MainCheckout $PSScriptRoot
 $cfg = Get-RepoConfig (Get-RepoRoot $PSScriptRoot)
 if ($Project) { $cfg.projectSubdir = $Project }
-if (@($cfg.lane.playerBootArgs) -match '\{report\}' -and $Set -notmatch '(^|[;,])report=') {
-    $line = ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Extra @{ report = (Join-Path $env:TEMP "$($cfg.name)-report.txt") -replace '\\', '/' }
-}
+try { $line = ConvertTo-TestbedLine $cfg $Start $Set $Frames } catch { Write-Host "[testbed] $($_.Exception.Message)"; exit 2 }
 $repo = $cfg.name
 $slotName = $cfg.testbedSlot
 $slotPath = Get-SlotPath $cfg (Split-Path $main -Parent) $slotName
@@ -83,6 +80,7 @@ try {
         Push-Location $slotPath
         try { & pwsh -NoProfile -File $cfg.lane.prepare | Out-Host } finally { Pop-Location }
     }
+    Set-SearchIndexStartupOff $proj
     $editor = try { Resolve-UnityEditor $proj $UnityPath $cfg.editorVersion } catch { Write-Host "[testbed] $($_.Exception.Message)"; exit 2 }
     $owner = "testbed:${repo}:$PID"
     $stamp = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')

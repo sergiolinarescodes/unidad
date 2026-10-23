@@ -3,6 +3,21 @@
 
 $ErrorActionPreference = 'Stop'
 
+# A scheduled task's PATH can put System32 (WSL bash.exe) before Git: `bash` must be Git's, so put Git's bin first.
+if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+    $gitExe = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($gitExe) {
+        $d = Split-Path $gitExe.Source -Parent
+        for ($i = 0; $i -lt 3 -and $d; $i++) {
+            $bin = Join-Path $d 'bin'; $d = Split-Path $d -Parent
+            if (Test-Path (Join-Path $bin 'bash.exe')) {
+                if (($env:PATH -split ';') -notcontains $bin) { $env:PATH = "$bin;$env:PATH" }
+                break
+            }
+        }
+    }
+}
+
 function Get-RepoRoot([string]$From = (Get-Location).Path) {
     # A git hook exports GIT_DIR (never GIT_WORK_TREE), which makes rev-parse answer the current directory: ask without it.
     $hookDir = $env:GIT_DIR; $env:GIT_DIR = $null
@@ -31,6 +46,8 @@ $script:RepoDefaults = @{
     unitySlots    = @('unity1')
     loopSlot      = 'loop'
     testbedSlot   = 'testbed'
+    liveSlots     = @('live1', 'live2')
+    live          = @{ batchmode = $true; size = '1600x900'; idleMinutes = 10; capMinutes = 60; settleSeconds = 3; replayPaths = @(); tour = $null }
     sidecar       = @{ solution = 'dotnet/Unidad.Sidecar.slnx'; viewCheckSolution = 'dotnet/Unidad.ViewCheck.slnx' }
     parity        = @{ roots = @('Packages'); logicDir = 'dotnet'; checkDir = 'dotnet/Check'; projectPrefixes = @('Unidad.'); ignoreProjects = @('Unidad.Analyzers') }
     lane          = @{
@@ -107,6 +124,26 @@ function Resolve-UnityEditor([string]$ProjectPath, [string]$UnityPath, [string]$
     $exe = "C:/Program Files/Unity/Hub/Editor/$v/Editor/Unity.exe"
     if (!(Test-Path -LiteralPath $exe)) { throw "Unity $v is not installed; install it with Unity Hub" }
     $exe
+}
+
+# Search.settings text with `indexOnEditorStartup = false` (created, flipped or appended; other keys kept). On 7000.0.0a10
+# a project with no UserSettings/Search.index throws ArgumentOutOfRangeException from SearchInit.IndexationOnStartup
+# (docs/DECISIONS.md "search-index-startup"). Remove once a Unity release builds an empty default index without throwing.
+function Get-SearchSettingsText([string]$Text) {
+    $line = 'indexOnEditorStartup = false'
+    if ("$Text".Trim() -in '', '{}') { return "$line`n" }
+    if ($Text -match '(?m)^\s*indexOnEditorStartup\s*=') { return $Text -replace '(?m)^(\s*)indexOnEditorStartup\s*=\s*\w+', "`$1$line" }
+    $Text.TrimEnd() + "`n$line`n"
+}
+
+# Writes it into <project>/UserSettings/Search.settings; every framework launch calls this before Unity starts.
+function Set-SearchIndexStartupOff([string]$ProjectPath) {
+    $dir = Join-Path $ProjectPath 'UserSettings'
+    New-Item -ItemType Directory -Force $dir | Out-Null
+    $file = Join-Path $dir 'Search.settings'
+    $old = if (Test-Path -LiteralPath $file) { [IO.File]::ReadAllText($file) } else { '' }
+    $new = Get-SearchSettingsText $old
+    if ($new -ne $old) { [IO.File]::WriteAllText($file, $new) }
 }
 
 # The editor's bundled SDK: always this dotnet (the system one is older).

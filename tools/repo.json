@@ -30,6 +30,7 @@
     "playerName": "Sandbox",
     "playerBootArgs": ["--set", "frames=60"],
     "collectRoots": ["Assets"],
+    "logIgnore": [],
     "capsMinutes": { "compile": 15, "import": 15, "exec": 15, "player": 45, "run": 45, "init": 45 },
     "postCompileChecks": []
   },
@@ -43,7 +44,8 @@
     { "run": "pwsh -NoProfile -File tools/check-tree.ps1" },
     { "run": "{dotnet} build dotnet/Unidad.Sidecar.slnx -v:q -nologo", "requires": "dotnet/Unidad.Sidecar.slnx" },
     { "run": "pwsh -NoProfile -File analyzers/build.ps1 -Check", "when": "^analyzers/", "requires": "analyzers/build.ps1" },
-    { "run": "pwsh -NoProfile -File tools/tests/ToolsSmoke.ps1", "when": "^(tools/|\\.githooks/)" }
+    { "run": "pwsh -NoProfile -File tools/tests/ToolsSmoke.ps1", "when": "^(tools/|\\.githooks/)" },
+    { "run": "pwsh -NoProfile -File tools/tests/LiveSmoke.ps1", "when": "^tools/(live|lib/|tests/LiveSmoke)" }
   ],
   "smokeMap": [
     { "match": "^Packages/com\\.unidad\\.core/", "project": "dotnet/Unidad.Core.Smoke" },

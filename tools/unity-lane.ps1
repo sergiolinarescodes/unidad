@@ -5,17 +5,22 @@ The serial Unity lane (U-10, U-61): the only way an agent starts Unity.exe.
   unity-lane.ps1 -Bee     -Branch <b> [-Slot <s>]                Bee batch compile (log-parsed unless beeExitCodeReliable)
   unity-lane.ps1 -Import  -Branch <b> [-Collect <roots>|default] batch import; -Collect copies importer output back
   unity-lane.ps1 -Exec <Method> -Branch <b> [-Collect <roots>|default] [-- <recipe args>]
-  unity-lane.ps1 -Player  -Branch <b> [-Boot] [-Strict] [-Start t] [-Set "k=v;..."] [-Frames n] [-Release]
+  unity-lane.ps1 -Player  -Branch <b> [-Boot] [-Strict] [-Graphics] [-Start t] [-Set "k=v;..."] [-Frames n] [-Release]
+  unity-lane.ps1 -EditorPlay -Branch <b> [-Strict] [-Start t] [-Set "k=v;..."] [-Frames n]
+                                                                a windowed editor runs the testbed entry in Play mode for the
+                                                                frames, then quits with the boot report's code
   unity-lane.ps1 -Run     -Branch <b> [-Start t] [-Set "k=v;..."] [-Frames n]   (reuses Build/ stamped with the SHA)
   unity-lane.ps1 -Claim   -Branch <b> [-Slot <s>]  /  -Release -Branch <b>        (a claim idles out after 20 min)
   unity-lane.ps1 -Init    -Slot <s> [-Branch <b>] [-From <slot>]
   unity-lane.ps1 -Status
--Branch uses the local refs/heads/<b> (commit first), else origin/<b>. Collect roots are relative to the Unity project
+-Graphics runs the player windowed (640x360) instead of -batchmode -nographics. -EditorPlay and every player run scan their
+log: an exception, a LogError/LogException, a boot failure or "Unable to generate text" exits 1 (lane.logIgnore drops
+a headline by regex). -Branch uses the local refs/heads/<b> (commit first), else origin/<b>. Collect roots are relative to the Unity project
 and comma-separated. Exit: 0 green; 1 compile/check/recipe failure; 2 usage or environment; 3 lock wait timed out or
 killed at the hold cap; 4 STOP; 5 the slot is open in an interactive editor.
 #>
 param(
-    [switch]$Compile, [switch]$Bee, [switch]$Import, [string]$Exec, [switch]$Player, [switch]$Run,
+    [switch]$Compile, [switch]$Bee, [switch]$Import, [string]$Exec, [switch]$Player, [switch]$Run, [switch]$EditorPlay, [switch]$Graphics,
     [switch]$Claim, [switch]$Release, [switch]$Init, [switch]$Status,
     [string]$Branch, [string]$Slot, [string[]]$Collect, [string]$From,
     [switch]$Boot, [switch]$Strict, [string]$Start, [string]$Set, [int]$Frames,
@@ -25,8 +30,8 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/Lane.ps1')
 
-$usage = 'usage: unity-lane.ps1 -Compile|-Bee|-Import|-Exec <M>|-Player|-Run|-Claim|-Release|-Init|-Status -Branch <b> [-Slot <s>] (see the header)'
-$modes = @(@($Compile, $Bee, $Import, [bool]$Exec, $Player, $Run, $Claim, $Init, $Status) | Where-Object { $_ })
+$usage = 'usage: unity-lane.ps1 -Compile|-Bee|-Import|-Exec <M>|-Player|-Run|-EditorPlay|-Claim|-Release|-Init|-Status -Branch <b> [-Slot <s>] (see the header)'
+$modes = @(@($Compile, $Bee, $Import, [bool]$Exec, $Player, $Run, $EditorPlay, $Claim, $Init, $Status) | Where-Object { $_ })
 $releaseClaim = $Release -and !$Player
 if ($modes.Count + [int]$releaseClaim -ne 1) { Write-Host $usage; exit 2 }
 if (!$Status -and !$Init -and !$Branch) { Write-Host "$usage`n-Branch is required"; exit 2 }
@@ -82,7 +87,7 @@ if (!$commit) { Write-Host "lane: no local or origin branch '$target'"; exit 2 }
 $sha = $commit.Sha
 Write-Host "lane: $target = $sha ($($commit.Source))"
 
-$mode = if ($Exec) { 'exec' } elseif ($Compile) { 'compile' } elseif ($Bee) { 'bee' } elseif ($Import) { 'import' } elseif ($Player) { 'player' } elseif ($Run) { 'run' } else { 'init' }
+$mode = if ($Exec) { 'exec' } elseif ($Compile) { 'compile' } elseif ($Bee) { 'bee' } elseif ($Import) { 'import' } elseif ($Player) { 'player' } elseif ($Run) { 'run' } elseif ($EditorPlay) { 'editorplay' } else { 'init' }
 $candidates = if ($Slot) { @($Slot) } else {
     $mine = @(); $free = @(); $borrow = @()
     foreach ($s in $cfg.unitySlots) {
@@ -124,6 +129,7 @@ try {
     $claimRec = Read-SlotClaim $repo $slotName
     if ($claimRec -and $claimRec.ClaimedBy -eq $target) { Write-SlotClaim $repo $slotName $target }
 
+    Set-SearchIndexStartupOff $proj
     $editor = try { Resolve-UnityEditor $proj $UnityPath $cfg.editorVersion } catch { Write-Host "lane: $($_.Exception.Message)"; exit 2 }
     $dotnet = Resolve-UnityDotnet $editor
     # inside sandbox-gate's hold, re-enter it (U-55)
@@ -176,6 +182,21 @@ try {
         git -C $slotPath checkout -q --force --detach $sha
         git -C $slotPath clean -qfd -- @repoRoots
         0
+    }
+    # The boot line every self-quitting run shares: playerBootArgs (frames, fresh, report) under -Start/-Set/-Frames/-Strict.
+    function BootLine([string]$Report) {
+        $base = @($cfg.lane.playerBootArgs | ForEach-Object { $_.Replace('{report}', ($Report -replace '\\', '/')) })
+        $extra = if ($Strict) { @{ strict = 'true' } } else { @{} }
+        ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Base $base -Extra $extra
+    }
+    function NewReport { $r = Join-Path ([IO.Path]::GetTempPath()) "unidad-lane/$stamp-report.json"; New-Item -ItemType Directory -Force (Split-Path $r -Parent) | Out-Null; $r }
+    # Prints the report and the log's error headlines; 1 on a headline, else the run's own code.
+    function Close-Run([string]$Report, [string]$Log, [int]$Code) {
+        if (Test-Path -LiteralPath $Report) { Get-Content -LiteralPath $Report | Out-Host }
+        $hits = @(if (Test-Path -LiteralPath $Log) { Get-LogErrors @(Get-Content -LiteralPath $Log) @($cfg.lane.logIgnore) })
+        $hits | ForEach-Object { Write-Host "lane: log error: $_" }
+        Write-Host "lane: exit $Code, $($hits.Count) log error(s) (log $Log)"
+        if ($hits -and $Code -lt 3) { 1 } else { $Code }
     }
     $collectRoots = if ($Collect -and ($Collect -join ',') -ne 'default') { $Collect } elseif ($Collect) { @($cfg.lane.collectRoots) }
 
@@ -251,19 +272,24 @@ try {
             } else { Write-Host "lane: reusing $exe (stamped $sha)" }
             $exitCode = 0
             if ($Run -or $Boot) {
-                $report = Join-Path ([IO.Path]::GetTempPath()) "unidad-lane/$stamp-report.json"
-                New-Item -ItemType Directory -Force (Split-Path $report -Parent) | Out-Null
-                $base = @($cfg.lane.playerBootArgs | ForEach-Object { $_.Replace('{report}', ($report -replace '\\', '/')) })
-                $extra = if ($Strict) { @{ strict = 'true' } } else { @{} }
-                $line = ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Base $base -Extra $extra
-                Write-Host "lane: $exe $((Get-PlayerRunArgs $line) -join ' ')"
-                $r = Invoke-Captured $exe (Get-PlayerRunArgs $line) ($caps.run * 60) $buildDir
-                [IO.File]::WriteAllLines((LogFile 'run'), [string[]]$r.Lines)
-                Write-Host "lane: player log $(LogFile 'run')"
-                if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report | Out-Host }
-                Write-Host "lane: player exit $($r.Code)"
-                $exitCode = switch ($r.Code) { 124 { 3 } 125 { 4 } default { $r.Code } }
+                $report = NewReport
+                $log = LogFile 'run'
+                $runArgs = Get-PlayerRunArgs (BootLine $report) -Graphics:$Graphics -LogFile $log
+                Write-Host "lane: $exe $($runArgs -join ' ')"
+                $r = Invoke-Captured $exe $runArgs ($caps.run * 60) $buildDir
+                if (!$Graphics) { [IO.File]::WriteAllLines($log, [string[]]$r.Lines) }   # -Graphics: the player writes -logFile itself
+                $exitCode = Close-Run $report $log $(switch ($r.Code) { 124 { 3 } 125 { 4 } default { $r.Code } })
             }
+        }
+        'editorplay' {
+            $report = NewReport
+            $log = LogFile 'editorplay'
+            $launch = (BootLine $report | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
+            Write-Host "lane: UNIDAD_LAUNCH=$launch"
+            $code = Invoke-LaneUnity $editor (Get-UnityArgs 'editorplay' $proj $log -Method (Resolve-ExecMethod 'EditorPlay' $cfg.lane.execPrefix)) $owner $caps.run $slotPath $target 'editorplay' $WaitMinutes @{
+                UNIDAD_LAUNCH = $launch; UNIDAD_LANE_EDITOR_PLAY = ($report -replace '\\', '/')
+            }
+            $exitCode = Close-Run $report $log $code
         }
         'init' { $exitCode = 0 }
     }
