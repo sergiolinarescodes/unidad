@@ -121,10 +121,12 @@ function Write-LiveSeat($Record) {
 
 # One `unity command` call to the editor with -EditorPid; the parsed JSON answer, or throws with the CLI's text.
 function Invoke-LiveCommand([int]$EditorPid, [string[]]$Command, [string[]]$Arguments = @(), [int]$TimeoutSec = 60) {
-    $out = & unity command @Command @Arguments --pid $EditorPid --result-only --timeout $TimeoutSec 2>&1 | ForEach-Object { "$_" }
+    # stdout only: the CLI may add a hint line on stderr
+    $out = & unity command @Command @Arguments --pid $EditorPid --result-only --timeout $TimeoutSec 2>$null | ForEach-Object { "$_" } | Where-Object { $_ -notmatch '^<claude-code-hint' }
     $text = ($out -join "`n").Trim()
     if ($LASTEXITCODE -ne 0) { throw "unity command $($Command -join ' ') failed ($LASTEXITCODE): $text" }
     $value = try { $text | ConvertFrom-Json } catch { $text }
     while ($value -is [string] -and $value.TrimStart().StartsWith('{')) { $value = $value | ConvertFrom-Json }
+    if ($value -isnot [pscustomobject]) { throw "unity command $($Command -join ' ') answered no JSON object: $text" }
     $value
 }

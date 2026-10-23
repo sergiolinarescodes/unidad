@@ -40,7 +40,7 @@ namespace Unidad.Live.Editor
             SessionState.SetString(PendingKey, "1");
             Environment.SetEnvironmentVariable(LaunchEnv, launch ?? "");
             if (EditorApplication.isPlaying) { EditorApplication.isPlaying = false; return Json(("requested", "stop, then play")); }
-            EditorApplication.delayCall += Door;
+            Next(Door);
             return Json(("requested", "play"));
         }
 
@@ -98,8 +98,16 @@ namespace Unidad.Live.Editor
         [CliCommand("live.quit", "Exit the editor")]
         public static string Quit()
         {
-            EditorApplication.delayCall += () => EditorApplication.Exit(0);
+            Next(() => EditorApplication.Exit(0));
             return Json(("requested", "quit"));
+        }
+
+        // Runs once on the next editor update (delayCall never fired for a command in a background editor).
+        internal static void Next(Action action)
+        {
+            EditorApplication.CallbackFunction once = null;
+            once = () => { EditorApplication.update -= once; action(); };
+            EditorApplication.update += once;
         }
 
         // The testbed door named in UNIDAD_LIVE_DOOR ("Namespace.Type.Method"), found by reflection: the overlay names no game.
@@ -124,7 +132,7 @@ namespace Unidad.Live.Editor
                 SessionState.SetFloat(EnteredKey, (float)EditorApplication.timeSinceStartup);
             }
             else if (change == PlayModeStateChange.EnteredEditMode && SessionState.GetString(PendingKey, "") != "")
-                EditorApplication.delayCall += Door;
+                Next(Door);
         }
 
         static bool Shown(VisualElement element)
