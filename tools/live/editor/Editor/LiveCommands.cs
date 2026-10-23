@@ -65,7 +65,7 @@ namespace Unidad.Live.Editor
         {
             var size = Capture.Wanted();
             var sw = Stopwatch.StartNew();
-            Capture.EnsureSize(size.w, size.h);
+            Capture.EnsureView(size.w, size.h);
             var (tw, th) = Capture.TargetSize();
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllBytes(path, Capture.Png(size.w, size.h));
@@ -120,6 +120,8 @@ namespace Unidad.Live.Editor
 #pragma warning restore UAC0005
             var method = type?.GetMethod(door.Substring(dot + 1), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static, null, Type.EmptyTypes, null);
             if (method == null) { Debug.LogError("[live] no testbed door " + door); SessionState.SetString(PendingKey, ""); return; }
+            var size = Capture.Wanted();
+            Capture.EnsureView(size.w, size.h);
             method.Invoke(null, null);
         }
 
@@ -186,17 +188,25 @@ namespace Unidad.Live.Editor
             catch { return (Screen.width, Screen.height); }
         }
 
-        // A fixed-resolution Game view (internal API, best effort): the render target then is w x h whatever the window size.
-        internal static void EnsureSize(int w, int h)
+        // A Game view at a fixed w x h (internal API, best effort): Screen.width/height, and so every panel's scale, follow
+        // it. A batchmode editor has none, so one is made as a floating window parked off-screen, never focused.
+        internal static void EnsureView(int w, int h)
         {
-            if (TargetSize() == (w, h)) return;
             try
             {
-                var view = PlayModeView.GetMethod("GetMainPlayModeView", Any).Invoke(null, null)
-                    ?? EditorWindow.GetWindow(Type.GetType("UnityEditor.GameView,UnityEditor"));
+                var view = PlayModeView.GetMethod("GetMainPlayModeView", Any).Invoke(null, null) as EditorWindow;
+                if (view == null)
+                {
+                    view = (EditorWindow)ScriptableObject.CreateInstance(Type.GetType("UnityEditor.GameView,UnityEditor"));
+                    view.titleContent = new GUIContent(Environment.GetEnvironmentVariable("UNIDAD_LIVE_TITLE") ?? "live");
+                    view.position = new Rect(-6000f, 0f, w, h + 40);
+                    view.Show();
+                }
+                if (Application.isBatchMode && view.position.x > -3000f) view.position = new Rect(-6000f, 0f, w, h + 40);
+                if (TargetSize() == (w, h)) return;
                 var set = view.GetType().GetMethod("SetCustomResolution", Any, null, new[] { typeof(Vector2), typeof(string) }, null);
                 set?.Invoke(view, new object[] { new Vector2(w, h), "live" });
-                ((EditorWindow)view).Repaint();
+                view.Repaint();
             }
             catch (Exception e) { Debug.LogWarning("[live] could not size the game view: " + e.GetBaseException().Message); }
         }
