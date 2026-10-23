@@ -199,7 +199,8 @@ if (!$Open) {
             $frames = "$Out/frames"
             if (Test-Path -LiteralPath $frames) { Remove-Item -LiteralPath $frames -Recurse -Force }
             New-Item -ItemType Directory -Force $frames | Out-Null
-            $cut = Get-LiveTourCut @(Get-Content -LiteralPath $Tour) $Until $(if ($Until) { @($live.tour.hold) } else { @() })
+            try { $cut = Get-LiveTourCut @(Get-Content -LiteralPath $Tour) $Until $(if ($Until) { @($live.tour.hold) } else { @() }) }
+            catch { Write-Host "live: $($_.Exception.Message)"; exit 2 }
             $file = "$Out/live-tour.txt"
             [IO.File]::WriteAllLines($file, [string[]]$cut)
             $set = (@(Split-SetString $Set) + @(Split-SetString ($live.tour.set.Replace('{tour}', $file).Replace('{frames}', $frames)))) -join ';'
@@ -208,23 +209,20 @@ if (!$Open) {
             Save-Seat
             Enter-Play $launch
             $manifest = "$frames/frames.jsonl"
-            $seen = { (Test-Path -LiteralPath $manifest) -and (Select-String -LiteralPath $manifest -SimpleMatch "`"label`":`"$Until`"" -Quiet) }
+            $seen = { (Test-Path -LiteralPath $manifest) -and @(Read-LiveSharedLines $manifest | Where-Object { $_.Contains("`"label`":`"$Until`"") }).Count -gt 0 }
             $deadline = [DateTime]::UtcNow.AddMinutes(10)
+            $reached = $false
             while ([DateTime]::UtcNow -lt $deadline) {
                 Touch-Seat $seat
-                if ($Until -and (& $seen)) { break }
+                if ($Until -and (& $seen)) { $reached = $true; break }
                 $st = Get-LiveStatus
                 if ($st -and !$st.playing -and !$st.pending) { break }
                 Start-Sleep -Seconds 1
             }
-            if (Test-Path -LiteralPath $manifest) {
-                $lines = [IO.File]::ReadAllLines($manifest)
-                $head = $lines[0] | ConvertFrom-Json -AsHashtable; $head['live'] = $true
-                $lines[0] = $head | ConvertTo-Json -Compress -Depth 4
-                [IO.File]::WriteAllLines($manifest, $lines)
-            }
+            if (Test-Path -LiteralPath $manifest) { Write-LiveManifestCopy $manifest "$Out/live-frames.jsonl" }
             $count = @(Get-ChildItem -LiteralPath $frames -File -Include '*.png', '*.jpg' -Recurse).Count
             if (!$Until) { Enter-Play $seat.Launch }
+            if ($Until -and !$reached) { Say "tour never reached '$Until' (the tour ended or 10 min passed): $count frame(s) in $frames"; exit 1 }
             Say "tour $(Split-Path $Tour -Leaf)$(if ($Until) { " held at $Until" }): $count frame(s) in $frames"
         } elseif ($Eval) {
             $r = Invoke-LiveCommand $seat.Pid @('script', 'eval') @('--code', $Eval) 120

@@ -38,15 +38,36 @@ function Get-LiveExpiry([datetime]$Started, [datetime]$LastTouch, [datetime]$Now
     $null
 }
 
-# A tour cut at its first line naming -Label (as a whole word), then the game's hold lines, so Play stays on that label.
+# The labels a tour emits: the first token after shot|burst|act on a non-comment line.
+function Get-LiveTourLabels([string[]]$Lines) {
+    @($Lines | Where-Object { $_ -notmatch '^\s*#' } | ForEach-Object { if ($_ -match '^\s*(shot|burst|act)\s+([^\s{}]+)') { $Matches[2] } })
+}
+
+# The tour lines up to the first line that emits <Label> (exact, via shot|burst|act), then the hold lines. Throws,
+# naming the labels the tour does have, when it never emits it.
 function Get-LiveTourCut([string[]]$Lines, [string]$Label, [string[]]$Hold = @()) {
     if (!$Label) { return @($Lines) + @($Hold) }
     $out = [Collections.Generic.List[string]]::new()
     foreach ($l in $Lines) {
         $out.Add($l)
-        if ($l -notmatch '^\s*#' -and $l -match "(^|[\s{])$([regex]::Escape($Label))(\s|$|[{}])") { return @($out) + @($Hold) }
+        if ($l -notmatch '^\s*#' -and $l -match '^\s*(shot|burst|act)\s+([^\s{}]+)' -and $Matches[2] -eq $Label) { return @($out) + @($Hold) }
     }
-    throw "tour has no line naming '$Label'"
+    throw "tour never emits label '$Label' (labels: $((Get-LiveTourLabels $Lines) -join ', '))"
+}
+
+# The lines of a file the game may still hold open for writing.
+function Read-LiveSharedLines([string]$Path) {
+    $fs = [IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+    try { $r = [IO.StreamReader]::new($fs); @(while (($l = $r.ReadLine()) -ne $null) { $l }) } finally { $fs.Dispose() }
+}
+
+# Copies the game's manifest to <Dest> with the header marked "live": true; the game's own file is never written.
+function Write-LiveManifestCopy([string]$Source, [string]$Dest) {
+    $lines = @(Read-LiveSharedLines $Source)
+    if (!$lines.Count) { return }
+    $head = $lines[0] | ConvertFrom-Json -AsHashtable; $head['live'] = $true
+    $lines[0] = $head | ConvertTo-Json -Compress -Depth 4
+    [IO.File]::WriteAllLines($Dest, [string[]]$lines)
 }
 
 # The project-relative path of the overlay package and its line in info/exclude.
