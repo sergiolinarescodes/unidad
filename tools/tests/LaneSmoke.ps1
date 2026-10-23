@@ -156,6 +156,12 @@ try {
     $g = Get-PlayerRunArgs @('--set', 'start=room') -Graphics -LogFile 'C:/s/p.log'
     Assert ($g -notcontains '-nographics' -and $g -notcontains '-batchmode' -and ($g -join ' ') -match '-logFile C:/s/p\.log -- --set start=room$' -and
             (Get-PlayerRunArgs @('--set', 'start=room')) -contains '-nographics') 'PlayerRunArgs_GraphicsWindowedKeepsLine'
+    $cap = @('--set', 'capture=C:/s/f')
+    $on = (Get-PlayerRunArgs $cap -Graphics -LogFile 'C:/s/p.log' -CaptureSize @(1600, 900)) -join ' '
+    Assert ($on -match '-screen-width 1600 -screen-height 900 ') 'PlayerRunArgs_CaptureSizeApplies'
+    $off = (Get-PlayerRunArgs @('--set', 'start=room') -Graphics -LogFile 'C:/s/p.log' -CaptureSize @(1600, 900)) -join ' '
+    Assert ($off -match '-screen-width 640 -screen-height 360 ') 'PlayerRunArgs_CaptureSizeOnlyWithCapture'
+    Assert (((Get-PlayerRunArgs $cap -Graphics -LogFile 'C:/s/p.log') -join ' ') -match '-screen-width 640 ') 'PlayerRunArgs_NoKeyKeepsSmall'
 } catch {
     Write-Host "FAIL (threw) $($_.Exception.Message) at $($_.InvocationInfo.ScriptLineNumber)"; $failed++
 } finally {

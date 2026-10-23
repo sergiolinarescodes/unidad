@@ -616,6 +616,7 @@ Sandbox still ships `UnityProject.Build.props` for its own `Assets/` asmdef. Gam
   `Data/Managed`, which the Check projects reference directly, so copying them would duplicate those references.
 - The testbed adds `--set report=<TEMP>/<repo>-report.txt` only when `lane.playerBootArgs` uses `{report}` (a key the
   game declares); unidad's launch keys have no `report`. `-Start` is emitted only when given.
+- `lane.captureSize` (`[w, h]`, optional): a `-Player -Graphics` run whose launch line has `capture=` opens that window size instead of 640x360 (frames match the reference shots). 11 sets `[1600, 900]`.
 - C7 observation for unidad: the generated `*.gen.csproj` glob `**/*.cs`, so `lane.msbuildGlobs` could be `true`; the
   repo keeps `false` (a new `.cs` regenerates, which costs about 30 s and is always correct) until `11-base` records C7.
 - Meta templates (U-47): `Lane.CaptureMetaTemplates` in the Sandbox re-captured `folder cs asmdef asmref text default uxml
