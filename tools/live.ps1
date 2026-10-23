@@ -3,7 +3,7 @@ Live iteration (docs/LIVE.md): one Unity editor stays open in Play mode on your 
 code slot, -Sync, and read a fresh frame in seconds without closing it. The inner loop only: a live frame is never a
 look verdict (the player-build look is).
   live.ps1 -Open   [-Branch <b>] [-From <code slot>] [-Start <t>] [-Set "k=v;..."]   take a seat, prepare the slot, play
-  live.ps1 -Sync   [-Branch <b>] [-From <code slot>]     copy what changed and route it (import in place | replay | recompile)
+  live.ps1 -Sync   [-Branch <b>] [-From <code slot>]     copy what changed and route it (import in place | replay | hot reload | recompile)
   live.ps1 -Replay [-Branch <b>]                          leave and re-enter Play with the same launch line (and last tour)
   live.ps1 -Shot   [-Branch <b>] -Label <l> -Out <dir>    one labelled PNG of the game view into <dir>/frames
   live.ps1 -Tour <file> [-Until <label>] -Out <dir>       play a tour through repo.json live.tour (the game's frames)
@@ -88,14 +88,19 @@ function Copy-Changes([string]$Slot) {
     @(foreach ($p in $paths | Where-Object { $_ } | Sort-Object -Unique) {
         if ($p.StartsWith("$overlay/")) { continue }
         $src = Join-Path $From $p; $dst = Join-Path $Slot $p
+        $route = Get-LiveRoute $p @($live.replayPaths); $why = $null
         if (Test-Path -LiteralPath $src -PathType Leaf) {
             if ((Test-Path -LiteralPath $dst) -and (Get-FileHash -LiteralPath $src).Hash -eq (Get-FileHash -LiteralPath $dst).Hash) { continue }
+            if ($live.methodReload -and $p -match '\.cs$') {
+                $t = if (Test-Path -LiteralPath $dst) { Test-LiveMethodReload ([IO.File]::ReadAllText($dst)) ([IO.File]::ReadAllText($src)) } else { @{ Reason = 'a new file' } }
+                if ($t.Reload) { $route = 'reload' } else { $why = $t.Reason }
+            }
             New-Item -ItemType Directory -Force (Split-Path $dst -Parent) | Out-Null
             Copy-Item -LiteralPath $src $dst -Force
             (Get-Item -LiteralPath $dst).LastWriteTimeUtc = [DateTime]::UtcNow
         } elseif (Test-Path -LiteralPath $dst -PathType Leaf) { Remove-Item -LiteralPath $dst -Force }
         else { continue }
-        @{ Path = $p; Route = Get-LiveRoute $p @($live.replayPaths) }
+        @{ Path = $p; Route = $route; Why = $why }
     })
 }
 function Invoke-Prepare([string]$Slot) {
@@ -103,6 +108,35 @@ function Invoke-Prepare([string]$Slot) {
         Push-Location $Slot
         try { & pwsh -NoProfile -File $cfg.lane.prepare | Out-Null } finally { Pop-Location }
     }
+    if ($live.methodReload) { Install-LiveMethodReload $Slot (Get-UnityProjectPath $cfg $Slot) | Out-Null }
+}
+# Leave Play, import, compile, play again; a red compile exits 1 with the editor in Edit mode.
+function Invoke-Recompile {
+    Live @('live', 'stop') | Out-Null
+    Wait-Live { param($s) !$s.playing } 60 'Edit mode' | Out-Null
+    Live @('live', 'refresh') @() 600 | Out-Null
+    $s = Wait-Live { param($s) !$s.compiling -and !$s.updating } 600 'a finished compile'
+    if ($s.compileFailed) {
+        Get-CompileErrors @(Get-Content -LiteralPath $seat.Log -Tail 400) | ForEach-Object { Write-Host "live: $_" }
+        Say 'compile RED: fix and -Sync again (the editor stays open, in Edit mode)'; exit 1
+    }
+    $seat.Reloaded = @(); Save-Seat
+    Say 'compiled'
+    Enter-Play (Get-LaunchFor $seat)
+    Say 'recompiled and back in Play'
+}
+# Hot-reloads each file through the Pipeline's method reload, in Play; $false (with the reason printed) on any failure.
+function Invoke-MethodReload($Changes) {
+    $proj = Get-UnityProjectPath $cfg $seat.SlotPath
+    foreach ($c in $Changes) {
+        $file = Resolve-LiveCompiledFile $seat.SlotPath $proj $c.Path
+        if (!$file) { Write-Host "live: no compiled copy of $($c.Path) under $proj"; return $false }
+        try { $r = Live @('script.methodreload', 'reload') @('--filename', $file) 120 } catch { Write-Host "live: method reload failed: $($_.Exception.Message)"; return $false }
+        if (!$r.success) { Write-Host "live: method reload failed: $($r.error) $($r.errorDetails) $(@($r.diagnostics) -join ' | ')"; return $false }
+        Write-Host "live:   reloaded $($c.Path): $($r.message)"
+    }
+    $seat.Reloaded = @(@($seat.Reloaded) + @($Changes | ForEach-Object { $_.Path }) | Where-Object { $_ } | Sort-Object -Unique); Save-Seat
+    $true
 }
 function Save-Seat { Write-LiveSeat $script:seat }
 
@@ -124,21 +158,18 @@ if (!$Open) {
             Save-Seat
             if (!$changes) { Say 'nothing changed'; exit 0 }
             Invoke-Prepare $seat.SlotPath
-            $route = Select-LiveRoute @($changes | ForEach-Object { $_.Route })
-            $changes | ForEach-Object { Write-Host "live:   $($_.Route)  $($_.Path)" }
-            Say "copied $($changes.Count) file(s); route $route"
+            $pick = Select-LiveSyncRoute @($changes | ForEach-Object { $_.Route }) ([bool]@($seat.Reloaded | Where-Object { $_ }).Count)
+            $route = $pick.Route
+            $changes | ForEach-Object { Write-Host "live:   $($_.Route)  $($_.Path)$(if ($_.Why) { "  (no hot reload: $($_.Why))" })" }
+            Say "copied $($changes.Count) file(s); route $route$(if ($pick.Why) { " ($($pick.Why))" })"
+            if ($route -eq 'none') { Say 'nothing Unity sees changed'; exit 0 }
+            if ($route -eq 'reload') {
+                if (Invoke-MethodReload @($changes | Where-Object { $_.Route -eq 'reload' })) { Say 'hot-reloaded, still in Play (same session: no domain reload, no new Play)'; exit 0 }
+                Say 'falling back to a recompile'
+                $route = 'recompile'
+            }
             if ($route -eq 'recompile') {
-                Live @('live', 'stop') | Out-Null
-                Wait-Live { param($s) !$s.playing } 60 'Edit mode' | Out-Null
-                Live @('live', 'refresh') @() 600 | Out-Null
-                $s = Wait-Live { param($s) !$s.compiling -and !$s.updating } 600 'a finished compile'
-                if ($s.compileFailed) {
-                    Get-CompileErrors @(Get-Content -LiteralPath $seat.Log -Tail 400) | ForEach-Object { Write-Host "live: $_" }
-                    Say 'compile RED: fix and -Sync again (the editor stays open, in Edit mode)'; exit 1
-                }
-                Say 'compiled'
-                Enter-Play (Get-LaunchFor $seat)
-                Say 'recompiled and back in Play'
+                Invoke-Recompile
             } else {
                 Live @('live', 'refresh') @() 600 | Out-Null
                 Wait-Live { param($s) !$s.compiling -and !$s.updating } 300 'a finished import' | Out-Null
@@ -146,7 +177,9 @@ if (!$Open) {
                 if ($route -eq 'replay') { Enter-Play (Get-LaunchFor $seat); Say 'replayed' }
             }
         } elseif ($Replay) {
-            Enter-Play (Get-LaunchFor $seat)
+            # a new Play reloads the domain, which drops hot-reloaded bodies: compile them first
+            if (@($seat.Reloaded | Where-Object { $_ }).Count) { Say 'hot-reloaded code is not compiled yet: recompiling'; Invoke-Recompile }
+            else { Enter-Play (Get-LaunchFor $seat) }
             Say 'replayed'
         } elseif ($Shot) {
             if (!$Label -or !$Out) { Write-Host 'live: -Shot needs -Label and -Out'; exit 2 }
@@ -220,7 +253,7 @@ $cap = if ($CapMinutes -gt 0) { $CapMinutes } else { [double]$live.capMinutes }
 $record = [ordered]@{
     Pid = $PID; ProcessStart = (Get-ProcessStartUtc $PID).ToString('o'); Repo = $repo; Branch = $Branch; Sha = $commit.Sha
     Slot = $null; SlotPath = $null; Start = $Start; Launch = $null; TourLaunch = $null; Touch = $null; Log = $null
-    IdleMinutes = $idle; CapMinutes = $cap; Started = [DateTime]::UtcNow.ToString('o'); Synced = @()
+    IdleMinutes = $idle; CapMinutes = $cap; Started = [DateTime]::UtcNow.ToString('o'); Synced = @(); Reloaded = @()
 }
 $deadline = [DateTime]::UtcNow.AddMinutes($WaitMinutes)
 $nextPrint = [DateTime]::UtcNow
@@ -263,7 +296,7 @@ try {
     $exclude = git -C $slotPath rev-parse --path-format=absolute --git-path info/exclude
     Install-LiveOverlay (Join-Path $PSScriptRoot 'live/editor') $slotPath $overlay $exclude.Trim() | Out-Null
     git -C $slotPath update-index --skip-worktree -- $lock 2>$null   # the overlay's dependencies rewrite the lock file
-    Say "slot $slotPath at $($commit.Sha.Substring(0, 7)) ($($commit.Source)), $($changes.Count) uncommitted file(s) from $From, overlay $overlay"
+    Say "slot $slotPath at $($commit.Sha.Substring(0, 7)) ($($commit.Source)), $($changes.Count) uncommitted file(s) from $From, overlay $overlay$(if ($live.methodReload) { ', method reload on (UNIDAD_LIVE)' })"
 
     if (!(Test-Path -LiteralPath (Join-Path $proj 'Library'))) {
         $src = @(@($cfg.unitySlots) + $cfg.loopSlot + $cfg.testbedSlot | Where-Object { $_ } | Where-Object {

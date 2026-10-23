@@ -9,6 +9,7 @@
   "unitySlots": ["unity1"],
   "loopSlot": "loop",
   "testbedSlot": "testbed",
+  "live": { "methodReload": true },
   "sidecar": {
     "solution": "dotnet/Unidad.Sidecar.slnx",
     "viewCheckSolution": "dotnet/Unidad.ViewCheck.slnx"

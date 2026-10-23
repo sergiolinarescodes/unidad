@@ -1048,3 +1048,28 @@ game-side (`tools/prepare-slot.ps1`, its fix-search-index-startup). The framewor
 (other keys kept) and `unity-lane.ps1`, `testbed.ps1`, `seed-unity.ps1` and `live.ps1 -Open` call it before Unity
 starts. A game's own copy (11's `prepare-slot.ps1` as `lane.prepare`) can be dropped after the next sync. Remove both
 once a Unity release builds an empty default index without throwing.
+
+## live-method-reload: hot reload of `[MethodReload]` bodies in live mode, opt-in per game
+
+2026-10-23, live-method-reload (the follow-up proposal of live-iterate). A game opts in with `live.methodReload: true` in
+`tools/repo.json` (default off; the framework's Sandbox is on). Then, in the live slot only, `live.ps1` adds `UNIDAD_LIVE`
+to `ProjectSettings.asset`'s Standalone scripting defines and gives every asmdef whose assembly has a `.cs` naming
+`MethodReload` the references `Unity.Pipeline` (the weaver only processes assemblies that reference it) and
+`Unity.Pipeline.Attributes`. `com.unity.pipeline` itself already comes with the live overlay. A project define, not an
+asmdef `versionDefines` entry: the Pipeline parses the reloaded file under `EditorUserBuildSettings.activeScriptCompilationDefines`,
+so an asmdef-only symbol hid the attribute from it ("No [MethodReload] methods found", seen). Game code puts the attribute
+behind `#if UNIDAD_LIVE`, so the shipped game never references the package. `-Sync` hot-reloads (`unity command
+script.methodreload reload`, the compiled backend) when every changed `.cs` differs from the live slot's copy only inside
+the bodies of `[MethodReload]` methods (`Test-LiveMethodReload`, a brace scan, not Roslyn: a misread falls back); any
+other change, a failed reload, an import in the same sync, or an import or `-Replay` while reloaded code is uncompiled
+(a refresh would compile it in Play; a new Play reloads the domain and drops the overrides) takes the recompile path,
+and `-Sync` prints which change forced it. Limit: the compiled backend reaches only public members of the declaring
+type, and the type itself must be public (Mono/CoreCLR enforce access on the loaded override; `AccessibilityValidator`
+rejects it up front). The interpreter backend (`script.methodreload reload-editor`) reaches private members by
+reflection; not used, it runs the body interpreted. Measured on the Sandbox: a body edit `-Sync` 7-12 s in the same Play
+session (plays count unchanged, `Time.time` continuing) against 36-52 s for the recompile path on the same machine
+(27.5 s in live-iterate's quieter run); almost all of it is the CLI round trip (~4-6 s per `unity command`), the
+override compile itself is 116-289 ms. Paths Unity cannot see (outside every `Assets`, `Packages`, `ProjectSettings`)
+now route `none`: copied, never imported, so a `tools/` edit no longer forces an import. The Movement sample is the proof: `MovementView`
+is public with public `Movement`/`Box`, and its `[MethodReload]` `Tick` also sets the box colour (the host creates the box
+clear); what the player sees is unchanged from 10.
