@@ -3,6 +3,21 @@
 
 $ErrorActionPreference = 'Stop'
 
+# A scheduled task's PATH can put System32 (WSL bash.exe) before Git: `bash` must be Git's, so put Git's bin first.
+if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+    $gitExe = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($gitExe) {
+        $d = Split-Path $gitExe.Source -Parent
+        for ($i = 0; $i -lt 3 -and $d; $i++) {
+            $bin = Join-Path $d 'bin'; $d = Split-Path $d -Parent
+            if (Test-Path (Join-Path $bin 'bash.exe')) {
+                if (($env:PATH -split ';') -notcontains $bin) { $env:PATH = "$bin;$env:PATH" }
+                break
+            }
+        }
+    }
+}
+
 function Get-RepoRoot([string]$From = (Get-Location).Path) {
     # A git hook exports GIT_DIR (never GIT_WORK_TREE), which makes rev-parse answer the current directory: ask without it.
     $hookDir = $env:GIT_DIR; $env:GIT_DIR = $null

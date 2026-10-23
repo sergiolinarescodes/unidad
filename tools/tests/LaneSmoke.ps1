@@ -119,6 +119,43 @@ try {
     $now = [DateTime]::UtcNow
     Assert ((Test-ClaimIdle @{ ClaimedBy = 'b'; LastUsed = $now.AddMinutes(-21).ToString('o') } $now) -and
             !(Test-ClaimIdle @{ ClaimedBy = 'b'; LastUsed = $now.AddMinutes(-5).ToString('o') } $now)) 'Claim_IdleReleaseAfterTimeout'
+
+    # Lines from the owner's first windowed testbed launch (11wt-testbed Editor.log, 2026-10-21).
+    $log = @(
+        '[Licensing::Client] Error: HandshakeResponse reported an error:',
+        "`tResponseCode: 505",
+        '[Save] Load deferred to the game.',
+        'UnityEngine.Debug.Log(Object)',
+        '[UnidadBootstrap] Initialization failed: report=C:/T/r.txt needs frames=<n>: the report is written when the frames run elapses.',
+        'UnityEngine.DebugLogHandler.Internal_Log(LogType, LogOption, String, Object)',
+        'UnityEngine.Logger.Log(LogType, Object)',
+        'UnityEngine.Debug.LogError(Object)',
+        'Unidad.Adapter.UnityLog.Error(String) in .\Packages\com.unidad.unity\Runtime\Diagnostics\UnityLog.cs:line 14',
+        '',
+        '(Filename: ./Packages/com.unidad.unity/Runtime/Diagnostics/UnityLog.cs Line: 14)',
+        "Unable to generate text. Failed to load font 'Rubik' (style: 'Black'). The font face could not be initialized.",
+        'UnityEngine.TextCore.Text.TextLib.GenerateTextInternal(NativeTextGenerationSettings, IntPtr, Boolean&)',
+        'This notice is shown once per project.',
+        'UnityEngine.Logger.Log(LogType, Object)',
+        'UnityEngine.Debug.LogWarning(Object)',
+        'UnityEditor.UIElements.ThemePriorityUpgradeNotice.ShowOnce()',
+        'Start Indexing on Editor startup',
+        "ArgumentOutOfRangeException: Index was out of range. Must be non-negative and less than the size of the collection. (Parameter 'index')",
+        '   at System.Collections.Generic.List`1.get_Item(Int32 index)',
+        '   at UnityEditor.Search.SearchDatabase.EnumerateAll()+MoveNext()',
+        "Unable to generate text. Failed to load font 'Rubik' (style: 'Black'). The font face could not be initialized.")
+    $hits = @(Get-LogErrors $log)
+    Assert ($hits.Count -eq 3 -and $hits[0] -match '^\[UnidadBootstrap\] Initialization failed' -and $hits[1] -match "^Unable to generate text.*'Rubik'" -and
+            $hits[2] -match '^ArgumentOutOfRangeException: ') 'LogErrors_BootFailureTextAndExceptionsOnceEach'
+    Assert (!($hits -match '\[Save\]|\[Licensing|This notice')) 'LogErrors_InfoWarningAndLicensingSkipped'
+    $kept = @(Get-LogErrors $log @('Rubik'))
+    Assert ($kept.Count -eq 2 -and !($kept -match 'Rubik')) 'LogErrors_IgnoreRegexDrops'
+
+    $play = Get-UnityArgs 'editorplay' 'C:/s/Sandbox' 'C:/s/e.log' -Method 'Game.Editor.Lane.EditorPlay'
+    Assert (!($play | Where-Object { $_ -in '-batchmode', '-nographics', '-quit' }) -and ($play -join ' ') -match '-logFile C:/s/e\.log -executeMethod Game.Editor\.Lane\.EditorPlay') 'UnityArgs_EditorPlayWindowedNoQuit'
+    $g = Get-PlayerRunArgs @('--set', 'start=room') -Graphics -LogFile 'C:/s/p.log'
+    Assert ($g -notcontains '-nographics' -and $g -notcontains '-batchmode' -and ($g -join ' ') -match '-logFile C:/s/p\.log -- --set start=room$' -and
+            (Get-PlayerRunArgs @('--set', 'start=room')) -contains '-nographics') 'PlayerRunArgs_GraphicsWindowedKeepsLine'
 } catch {
     Write-Host "FAIL (threw) $($_.Exception.Message) at $($_.InvocationInfo.ScriptLineNumber)"; $failed++
 } finally {

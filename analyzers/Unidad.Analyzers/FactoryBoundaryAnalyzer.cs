@@ -40,7 +40,7 @@ namespace Unidad.Analyzers
             context.EnableConcurrentExecution();
             context.RegisterCompilationStartAction(start =>
             {
-                if (!SymbolFacts.IsAnalyzed(start.Compilation) || SymbolFacts.IsEditorAssembly(start.Compilation)) return;
+                if (!SymbolFacts.IsAnalyzed(start.Compilation, start.Options) || SymbolFacts.IsEditorAssembly(start.Compilation)) return;
                 start.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
                 start.RegisterSyntaxNodeAction(AnalyzeAssetDatabase, SyntaxKind.SimpleMemberAccessExpression);
             });

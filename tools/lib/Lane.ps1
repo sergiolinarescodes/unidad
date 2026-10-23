@@ -27,6 +27,8 @@ function Resolve-ExecMethod([string]$Method, [string]$Prefix) {
 # Unity.exe arguments per mode. MSBuild mode (-enable-msbuild, it does not persist) everywhere except Bee and the player.
 function Get-UnityArgs([string]$Mode, [string]$ProjectPath, [string]$LogFile, [string]$Method, [string]$BuildOut,
                        [switch]$Release, [string[]]$Extra = @()) {
+    # editorplay: a windowed editor that enters Play and quits itself (the Method's watch); no batchmode, no -quit
+    if ($Mode -eq 'editorplay') { return @('-projectPath', $ProjectPath, '-logFile', $LogFile, '-executeMethod', $Method) }
     $a = @('-batchmode', '-nographics')
     if ($Mode -notin 'bee', 'player') { $a += '-enable-msbuild' }
     $a += @('-quit', '-projectPath', $ProjectPath)
@@ -62,7 +64,38 @@ function ConvertTo-LaunchLine([string]$Start, [string]$Set, [int]$Frames, [strin
     @(foreach ($k in $settings.Keys) { '--set'; "$k=$($settings[$k])" })
 }
 
-function Get-PlayerRunArgs([string[]]$LaunchLine) { @('-batchmode', '-nographics', '--') + @($LaunchLine) }
+# The testbed's line: report= (with frames and fresh) only for a frames run, the one run whose BootReportHost can write it.
+function ConvertTo-TestbedLine($Cfg, [string]$Start, [string]$Set, [int]$Frames) {
+    if ($Frames -le 0) { return ConvertTo-LaunchLine -Start $Start -Set $Set }
+    $report = (Join-Path $env:TEMP "$($Cfg.name)-report.txt") -replace '\\', '/'
+    ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Base @(@($Cfg.lane.playerBootArgs) | Where-Object { $_ } | ForEach-Object { $_.Replace('{report}', $report) })
+}
+
+function Get-PlayerRunArgs([string[]]$LaunchLine, [switch]$Graphics, [string]$LogFile) {
+    if ($Graphics) { return @('-screen-fullscreen', '0', '-screen-width', '640', '-screen-height', '360', '-logFile', $LogFile, '--') + @($LaunchLine) }
+    @('-batchmode', '-nographics', '--') + @($LaunchLine)
+}
+
+# Unique error headlines of a Unity log, first-seen order: exception lines, boot failures, text generation failures, and
+# the last non-stack line before a Debug.LogError/LogException/LogAssertion frame. A headline matching an $Ignore regex drops.
+function Get-LogErrors([string[]]$Lines, [string[]]$Ignore = @()) {
+    $frame = '^\s*(at\s+)?[\w`<>\[\]+|$-]+([.:][\w`<>\[\]+|$-]+)+ ?\('
+    $errorFrame = 'UnityEngine\.(Debug[.:]Log(Error|Exception|Assertion)|Logger[.:]LogException)|DebugLogHandler[.:]Internal_LogException'
+    $seen = [Collections.Generic.List[string]]::new()
+    $headline = $null
+    foreach ($l in $Lines) {
+        $t = "$l".Trim()
+        if (!$t -or $t -match '^\(Filename:') { continue }
+        $hit = $null
+        if ($t -match $frame) { if ($t -match $errorFrame -and $headline) { $hit = $headline } }
+        else {
+            $headline = $t
+            if ($t -match '^([\w.]+\.)?\w*Exception: ' -or $t -match '\[UnidadBootstrap\] Initialization failed' -or $t -match 'Unable to generate text') { $hit = $t }
+        }
+        if ($hit -and !$seen.Contains($hit) -and !(@($Ignore) | Where-Object { $_ -and $hit -match $_ })) { $seen.Add($hit) }
+    }
+    $seen.ToArray()
+}
 
 # Unique "error CS####" / "error UD###" lines, in first-seen order.
 function Get-CompileErrors([string[]]$Lines) {
