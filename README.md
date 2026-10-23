@@ -20,9 +20,9 @@ Packages/com.unidad.unity` into your project's `Packages/` (games carry it with 
 dependencies, add all three to `Packages/manifest.json`:
 
 ```json
-"com.unidad.core":    "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.core#v2.0.1",
-"com.unidad.modules": "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.modules#v2.0.1",
-"com.unidad.unity":   "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.unity#v2.0.1"
+"com.unidad.core":    "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.core#v2.0.2",
+"com.unidad.modules": "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.modules#v2.0.2",
+"com.unidad.unity":   "https://github.com/sergiolinarescodes/unidad.git?path=/Packages/com.unidad.unity#v2.0.2"
 ```
 
 ## 0.x
