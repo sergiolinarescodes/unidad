@@ -19,6 +19,18 @@ try {
     Assert ((Select-LiveRoute @('asset', 'style', 'recompile')) -eq 'recompile' -and (Select-LiveRoute @('asset', 'replay', 'style')) -eq 'replay' -and
             (Select-LiveRoute @('asset', 'style')) -eq 'style' -and (Select-LiveRoute @()) -eq 'none') 'Route_StrongestWins'
 
+    # Search.settings: created, flipped or appended; other keys kept; the writer is idempotent.
+    $off = 'indexOnEditorStartup = false'
+    Assert ((Get-SearchSettingsText '') -eq "$off`n" -and (Get-SearchSettingsText '{}') -eq "$off`n") 'Search_EmptyOrBracesBecomesTheKey'
+    $flipped = Get-SearchSettingsText "trackSelection = true`n  indexOnEditorStartup = true`nkeepOpen = true`n"
+    Assert ($flipped -eq "trackSelection = true`n  $off`nkeepOpen = true`n") 'Search_TrueFlippedInPlace'
+    Assert ((Get-SearchSettingsText "trackSelection = true`nscopes = {`n}`n") -eq "trackSelection = true`nscopes = {`n}`n$off`n") 'Search_MissingKeyAppended'
+    $proj = Join-Path $Temp 'proj'
+    Set-SearchIndexStartupOff $proj
+    $first = [IO.File]::ReadAllText("$proj/UserSettings/Search.settings")
+    Set-SearchIndexStartupOff $proj
+    Assert ($first -eq "$off`n" -and [IO.File]::ReadAllText("$proj/UserSettings/Search.settings") -eq $first) 'Search_WriterCreatesAndIsIdempotent'
+
     $t0 = [DateTime]::new(2026, 10, 23, 8, 0, 0, [DateTimeKind]::Utc)
     Assert ($null -eq (Get-LiveExpiry $t0 $t0.AddMinutes(5) $t0.AddMinutes(14) 10 60)) 'Expiry_NoneWhileUsed'
     Assert ((Get-LiveExpiry $t0 $t0.AddMinutes(5) $t0.AddMinutes(15) 10 60) -eq 'idle') 'Expiry_IdleAfterTenQuietMinutes'

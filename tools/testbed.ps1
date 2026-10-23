@@ -83,6 +83,7 @@ try {
         Push-Location $slotPath
         try { & pwsh -NoProfile -File $cfg.lane.prepare | Out-Host } finally { Pop-Location }
     }
+    Set-SearchIndexStartupOff $proj
     $editor = try { Resolve-UnityEditor $proj $UnityPath $cfg.editorVersion } catch { Write-Host "[testbed] $($_.Exception.Message)"; exit 2 }
     $owner = "testbed:${repo}:$PID"
     $stamp = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')

@@ -111,6 +111,26 @@ function Resolve-UnityEditor([string]$ProjectPath, [string]$UnityPath, [string]$
     $exe
 }
 
+# Search.settings text with `indexOnEditorStartup = false` (created, flipped or appended; other keys kept). On 7000.0.0a10
+# a project with no UserSettings/Search.index throws ArgumentOutOfRangeException from SearchInit.IndexationOnStartup
+# (docs/DECISIONS.md "search-index-startup"). Remove once a Unity release builds an empty default index without throwing.
+function Get-SearchSettingsText([string]$Text) {
+    $line = 'indexOnEditorStartup = false'
+    if ("$Text".Trim() -in '', '{}') { return "$line`n" }
+    if ($Text -match '(?m)^\s*indexOnEditorStartup\s*=') { return $Text -replace '(?m)^(\s*)indexOnEditorStartup\s*=\s*\w+', "`$1$line" }
+    $Text.TrimEnd() + "`n$line`n"
+}
+
+# Writes it into <project>/UserSettings/Search.settings; every framework launch calls this before Unity starts.
+function Set-SearchIndexStartupOff([string]$ProjectPath) {
+    $dir = Join-Path $ProjectPath 'UserSettings'
+    New-Item -ItemType Directory -Force $dir | Out-Null
+    $file = Join-Path $dir 'Search.settings'
+    $old = if (Test-Path -LiteralPath $file) { [IO.File]::ReadAllText($file) } else { '' }
+    $new = Get-SearchSettingsText $old
+    if ($new -ne $old) { [IO.File]::WriteAllText($file, $new) }
+}
+
 # The editor's bundled SDK: always this dotnet (the system one is older).
 function Resolve-UnityDotnet([string]$Editor) { (Join-Path (Split-Path $Editor -Parent) 'Data/DotNetSdk/dotnet.exe') -replace '\\', '/' }
 function Resolve-YamlMerge([string]$Editor) { (Join-Path (Split-Path $Editor -Parent) 'Data/Tools/UnityYAMLMerge.exe') -replace '\\', '/' }

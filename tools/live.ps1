@@ -277,6 +277,7 @@ try {
         } else { Say 'no lane slot Library to seed from: the first open is a full import' }
     }
 
+    Set-SearchIndexStartupOff $proj
     $editor = try { Resolve-UnityEditor $proj $UnityPath $cfg.editorVersion } catch { Write-Host "live: $($_.Exception.Message)"; exit 2 }
     $launch = (ConvertTo-LaunchLine -Start $Start -Set $Set | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
     $touch = ($file -replace '\.json$', '.touch')
