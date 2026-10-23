@@ -201,6 +201,7 @@ namespace Unidad.Live.Editor
                     view.titleContent = new GUIContent(Environment.GetEnvironmentVariable("UNIDAD_LIVE_TITLE") ?? "live");
                     view.position = new Rect(-6000f, 0f, w, h + 40);
                     view.Show();
+                    Park.All();
                 }
                 if (Application.isBatchMode && view.position.x > -3000f) view.position = new Rect(-6000f, 0f, w, h + 40);
                 if (TargetSize() == (w, h)) return;
@@ -294,6 +295,7 @@ namespace Unidad.Live.Editor
         {
             if (Throttle.ElapsedMilliseconds < 1000) return;
             Throttle.Restart();
+            Park.All();
             var utc = DateTime.UtcNow;
             var idle = File.Exists(Touch) ? (utc - File.GetLastWriteTimeUtc(Touch)).TotalSeconds : (utc - Started).TotalSeconds;
             var age = (utc - Started).TotalSeconds;
@@ -301,6 +303,34 @@ namespace Unidad.Live.Editor
             Debug.Log($"[live] closing: {(age >= Cap ? $"{Cap:0} s cap" : $"{Idle:0} s without a live command")}");
             EditorApplication.update -= Check;
             EditorApplication.Exit(0);
+        }
+    }
+
+    /// <summary>Keeps every visible window of this editor off-screen and unfocused (Unity clamps its own window positions
+    /// onto a monitor, Win32 does not). tools/live/Live.ps1 parks them the same way until this assembly loads.</summary>
+    internal static class Park
+    {
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        struct Rect32 { public int L, T, R, B; }
+        delegate bool EnumProc(IntPtr h, IntPtr l);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr l);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out Rect32 r);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
+
+        internal static void All()
+        {
+            if (Application.platform != RuntimePlatform.WindowsEditor) return;
+            var self = (uint)Process.GetCurrentProcess().Id;
+            var left = GetSystemMetrics(76) - 4000;   // SM_XVIRTUALSCREEN: 4000 px left of every monitor
+            EnumWindows((h, l) =>
+            {
+                if (GetWindowThreadProcessId(h, out var pid) == 0 || pid != self || !IsWindowVisible(h) || !GetWindowRect(h, out var r)) return true;
+                if (r.L > left + 100) SetWindowPos(h, new IntPtr(1), left, 0, 0, 0, 0x0011);   // HWND_BOTTOM, SWP_NOSIZE|SWP_NOACTIVATE
+                return true;
+            }, IntPtr.Zero);
         }
     }
 }
