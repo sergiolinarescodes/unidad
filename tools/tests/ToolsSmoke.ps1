@@ -105,6 +105,11 @@ try {
     Assert ($windowed -eq '--set start=room' -and $frames -match '--set report=\S+/g-report\.txt' -and $frames -match '--set frames=60' -and
             $frames -match '--set fresh=false') 'Testbed_ReportOnlyWithFrames_SetOverridesBase'
     Assert ((ConvertTo-TestbedLine $tb 'room' '' 60) -contains 'fresh=true') 'Testbed_FramesRunIsFresh'
+    if ($IsWindows) {
+        $pwshDir = Split-Path (Get-Process -Id $PID).Path -Parent
+        $child = & (Get-Process -Id $PID).Path -NoProfile -Command "`$env:PATH = 'C:\WINDOWS\system32;C:\Program Files\Git\cmd;$pwshDir'; . '$tools/lib/UnidadTools.ps1'; (Get-Command bash).Source"
+        Assert ($child -notmatch 'System32|WindowsApps' -and $child -like '*\bin\bash.exe') 'Tools_BashResolvesToGitBash_EvenWithSystem32First'
+    }
 } catch {
     Write-Host "FAIL (threw) $($_.Exception.Message) at $($_.InvocationInfo.ScriptLineNumber)"; $failed++
 } finally {
