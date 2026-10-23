@@ -1,12 +1,12 @@
 {
   "name": "com.unidad.unity",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "displayName": "Unidad Unity Adapter",
   "unity": "7000.0",
   "description": "The Unity half of the Unidad framework: bootstrap, PlayerLoop tick pump, stage hosts, UI Toolkit panels, motion, models and editor batch entry points.",
   "dependencies": {
-    "com.unidad.core": "2.0.2",
-    "com.unidad.modules": "2.0.2",
+    "com.unidad.core": "2.0.3",
+    "com.unidad.modules": "2.0.3",
     "com.unity.inputsystem": "6.7.0",
     "com.unity.modules.uielements": "1.0.0",
     "com.unity.modules.audio": "1.0.0"
