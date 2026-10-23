@@ -78,7 +78,7 @@ function Add-LiveFrame([string]$FramesDir, [hashtable]$Header, [hashtable]$Entry
 
 function Get-NextFrameName([string]$FramesDir) {
     $n = @(Get-ChildItem -LiteralPath $FramesDir -Filter '*.png' -ErrorAction SilentlyContinue | ForEach-Object { if ($_.BaseName -match '^\d+$') { [int]$_.BaseName } }) | Measure-Object -Maximum
-    '{0:D5}.png' -f $(if ($n.Count) { $n.Maximum + 1 } else { 0 })
+    '{0:D5}.png' -f $(if ($n.Count) { [int]$n.Maximum + 1 } else { 0 })
 }
 
 # --- seats ----------------------------------------------------------------------------------------------------------
@@ -99,6 +99,7 @@ function Get-LiveSeats([string]$Dir = (Get-LiveSeatDir), [scriptblock]$IsStale =
 
 # Takes the first free seat for $Record (an ordered hashtable with Pid and ProcessStart); the seat file's path, or $null.
 function Enter-LiveSeat($Record, [string]$Dir = (Get-LiveSeatDir), [int]$Max = $script:LiveSeats, [scriptblock]$IsStale = { param($r) Test-LockStale $r }) {
+    New-Item -ItemType Directory -Force $Dir | Out-Null
     Get-LiveSeats $Dir $IsStale | Out-Null
     for ($i = 1; $i -le $Max; $i++) {
         $path = Join-Path $Dir "seat$i.json"

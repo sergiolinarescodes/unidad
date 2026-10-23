@@ -107,7 +107,9 @@ namespace Unidad.Live.Editor
         {
             var door = Environment.GetEnvironmentVariable("UNIDAD_LIVE_DOOR") ?? "";
             var dot = door.LastIndexOf('.');
+#pragma warning disable UAC0005 // a by-name lookup of the door's type, once per Play entry
             var type = dot > 0 ? AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType(door.Substring(0, dot))).FirstOrDefault(t => t != null) : null;
+#pragma warning restore UAC0005
             var method = type?.GetMethod(door.Substring(dot + 1), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static, null, Type.EmptyTypes, null);
             if (method == null) { Debug.LogError("[live] no testbed door " + door); SessionState.SetString(PendingKey, ""); return; }
             method.Invoke(null, null);
@@ -204,8 +206,10 @@ namespace Unidad.Live.Editor
                 if (SystemInfo.graphicsUVStartsAtTop) Graphics.Blit(source, outRt, new Vector2(1f, -1f), new Vector2(0f, 1f));
                 else Graphics.Blit(source, outRt);
                 RenderTexture.active = outRt;
+#pragma warning disable UD012 // the readback is the job: one frame grab per live.shot call
                 tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
                 tex.Apply();
+#pragma warning restore UD012
                 return tex.EncodeToPNG();
             }
             finally
@@ -225,7 +229,7 @@ namespace Unidad.Live.Editor
         static readonly string Touch = Environment.GetEnvironmentVariable("UNIDAD_LIVE_TOUCH");
         static readonly double Idle = Seconds("UNIDAD_LIVE_IDLE_SECONDS", 600), Cap = Seconds("UNIDAD_LIVE_CAP_SECONDS", 3600);
         static readonly DateTime Started = Process.GetCurrentProcess().StartTime.ToUniversalTime();
-        static double _next;
+        static readonly Stopwatch Throttle = Stopwatch.StartNew();
 
         static LiveWatchdog()
         {
@@ -239,9 +243,8 @@ namespace Unidad.Live.Editor
 
         static void Check()
         {
-            var now = EditorApplication.timeSinceStartup;
-            if (now < _next) return;
-            _next = now + 1;
+            if (Throttle.ElapsedMilliseconds < 1000) return;
+            Throttle.Restart();
             var utc = DateTime.UtcNow;
             var idle = File.Exists(Touch) ? (utc - File.GetLastWriteTimeUtc(Touch)).TotalSeconds : (utc - Started).TotalSeconds;
             var age = (utc - Started).TotalSeconds;

@@ -61,6 +61,7 @@ function Get-LiveStatus { try { Live @('live', 'status') @() 15 } catch { $null 
 function Wait-Live([scriptblock]$Test, [int]$Seconds, [string]$What) {
     $deadline = [DateTime]::UtcNow.AddSeconds($Seconds)
     while ($true) {
+        Touch-Seat $seat
         if (!(Get-Process -Id $seat.Pid -ErrorAction SilentlyContinue)) { throw "the live editor (PID $($seat.Pid)) exited while waiting for $What; log $($seat.Log)" }
         $s = Get-LiveStatus
         if ($s -and (& $Test $s)) { return $s }
@@ -282,13 +283,11 @@ try {
     [IO.File]::WriteAllText($touch, [DateTime]::UtcNow.ToString('o'))
     New-Item -ItemType Directory -Force "$proj/Logs" | Out-Null
     $log = "$proj/Logs/live-$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')).log"
-    $psi = [Diagnostics.ProcessStartInfo]::new($editor)
-    foreach ($a in '-projectPath', $proj, '-logFile', $log) { $psi.ArgumentList.Add($a) }
     $envs = @{ UNIDAD_LAUNCH = $launch; UNIDAD_LIVE_DOOR = $cfg.lane.testbedMethod; UNIDAD_LIVE_TOUCH = $touch; UNIDAD_LIVE_SIZE = $live.size
         UNIDAD_LIVE_IDLE_SECONDS = "$([int]($idle * 60))"; UNIDAD_LIVE_CAP_SECONDS = "$([int]($cap * 60))" }
-    foreach ($k in $envs.Keys) { $psi.Environment[$k] = $envs[$k] }
-    $psi.UseShellExecute = $false
-    $p = [Diagnostics.Process]::Start($psi)
+    # Start-Process (ShellExecute): the editor inherits no console handle, so it outlives this script and its caller's pipe.
+    foreach ($k in $envs.Keys) { Set-Item "env:$k" $envs[$k] }
+    $p = Start-Process -FilePath $editor -ArgumentList @('-projectPath', "`"$proj`"", '-logFile', "`"$log`"") -PassThru
     Register-TrackedRun $p 'live' $slotPath $Branch 'live' ([int]($cap * 60) + 300) 'agent' | Out-Null
     $seat.Pid = $p.Id; $seat.ProcessStart = $p.StartTime.ToUniversalTime().ToString('o')
     $seat.Launch = $launch; $seat.Touch = $touch; $seat.Log = $log
