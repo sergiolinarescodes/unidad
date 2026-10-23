@@ -162,8 +162,9 @@ if (!$Open) {
             $route = $pick.Route
             $changes | ForEach-Object { Write-Host "live:   $($_.Route)  $($_.Path)$(if ($_.Why) { "  (no hot reload: $($_.Why))" })" }
             Say "copied $($changes.Count) file(s); route $route$(if ($pick.Why) { " ($($pick.Why))" })"
+            if ($route -eq 'none') { Say 'nothing Unity sees changed'; exit 0 }
             if ($route -eq 'reload') {
-                if (Invoke-MethodReload $changes) { $s = Get-LiveStatus; Say "hot-reloaded, still in Play (plays $($s.plays), frame $($s.frame))"; exit 0 }
+                if (Invoke-MethodReload @($changes | Where-Object { $_.Route -eq 'reload' })) { Say 'hot-reloaded, still in Play (same session: no domain reload, no new Play)'; exit 0 }
                 Say 'falling back to a recompile'
                 $route = 'recompile'
             }

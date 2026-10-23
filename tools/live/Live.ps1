@@ -14,9 +14,11 @@ $script:LiveOverlayName = 'com.unidad.live'
 # --- pure cores -----------------------------------------------------------------------------------------------------
 
 # What a changed path needs from the open editor. recompile: leave Play, import, compile, play again. replay: import,
-# then leave and re-enter Play (boot-time data). style / asset: import in place and stay in Play.
+# then leave and re-enter Play (boot-time data). style / asset: import in place and stay in Play. none: Unity cannot see
+# the path (outside every Assets, Packages and ProjectSettings folder: tools, docs), so it is copied and not imported.
 function Get-LiveRoute([string]$Path, [string[]]$ReplayPaths = @()) {
     $p = $Path -replace '\\', '/'
+    if ($p -notmatch '(^|/)(Assets|Packages|ProjectSettings)/') { return 'none' }
     if ($p -match '\.(cs|asmdef|asmref)$|(^|/)csc\.rsp$|(^|/)(package|manifest)\.json$') { return 'recompile' }
     if (@($ReplayPaths | Where-Object { $_ -and $p -match $_ })) { return 'replay' }
     if ($p -match '\.(uss|tss|uxml)$') { return 'style' }
@@ -201,7 +203,7 @@ function Test-LiveMethodReload([string]$Old, [string]$New) {
 # The route of a whole sync and why: a hot reload only when every change is a reloadable .cs (an import beside it, or
 # after it while reloaded code is uncompiled, would compile that code in Play), else Select-LiveRoute.
 function Select-LiveSyncRoute([string[]]$Routes, [bool]$ReloadPending) {
-    $other = @($Routes | Where-Object { $_ -ne 'reload' })
+    $other = @($Routes | Where-Object { $_ -notin 'reload', 'none' })
     if (@($Routes) -contains 'reload') {
         if (!$other) { return @{ Route = 'reload'; Why = $null } }
         if ($other -notcontains 'recompile') { return @{ Route = 'recompile'; Why = 'a hot reload cannot share a sync with an import' } }

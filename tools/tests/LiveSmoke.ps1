@@ -13,7 +13,8 @@ try {
     $replay = @('^Assets/StreamingAssets/Content/')
     Assert ((Get-LiveRoute 'Packages/com.x/Runtime/A.cs') -eq 'recompile' -and (Get-LiveRoute 'Assets/A/B.asmdef') -eq 'recompile' -and
             (Get-LiveRoute 'Assets/A/csc.rsp') -eq 'recompile' -and (Get-LiveRoute 'Sandbox/Packages/manifest.json') -eq 'recompile') 'Route_CodeAndPackagesRecompile'
-    Assert ((Get-LiveRoute 'Assets/Ui/tokens.uss') -eq 'style' -and (Get-LiveRoute 'Assets\Ui\a.uxml') -eq 'style' -and (Get-LiveRoute 'R/Unidad.tss') -eq 'style') 'Route_StylesheetsStayInPlay'
+    Assert ((Get-LiveRoute 'Assets/Ui/tokens.uss') -eq 'style' -and (Get-LiveRoute 'Assets\Ui\a.uxml') -eq 'style' -and (Get-LiveRoute 'Packages/u/Runtime/Resources/Unidad.tss') -eq 'style') 'Route_StylesheetsStayInPlay'
+    Assert ((Get-LiveRoute 'tools/live.ps1') -eq 'none' -and (Get-LiveRoute 'docs/LIVE.md') -eq 'none' -and (Get-LiveRoute 'tools/live/editor/Editor/A.cs') -eq 'none') 'Route_InvisibleToUnityIsNone'
     Assert ((Get-LiveRoute 'Assets/StreamingAssets/Content/Room/room.json' $replay) -eq 'replay' -and
             (Get-LiveRoute 'Assets/StreamingAssets/Content/Room/room.json') -eq 'asset' -and (Get-LiveRoute 'Assets/M/wood.mat' $replay) -eq 'asset') 'Route_ReplayPathsFromConfig'
     Assert ((Select-LiveRoute @('asset', 'style', 'recompile')) -eq 'recompile' -and (Select-LiveRoute @('asset', 'replay', 'style')) -eq 'replay' -and
@@ -116,7 +117,7 @@ public sealed class View
     $r = { param($routes, $pending) $x = Select-LiveSyncRoute $routes $pending; "$($x.Route)$(if ($x.Why) { '!' })" }
     Assert ((& $r @('reload', 'reload') $false) -eq 'reload' -and (& $r @('reload', 'recompile') $false) -eq 'recompile' -and
             (& $r @('reload', 'style') $false) -eq 'recompile!' -and (& $r @('style') $true) -eq 'recompile!' -and
-            (& $r @('style') $false) -eq 'style' -and (& $r @('reload') $true) -eq 'reload') 'Reload_SyncRouteRules'
+            (& $r @('style') $false) -eq 'style' -and (& $r @('reload') $true) -eq 'reload' -and (& $r @('reload', 'none') $false) -eq 'reload') 'Reload_SyncRouteRules'
     $asm = '{ "name": "G.View", "references": ["G.Logic"], "versionDefines": [] }'
     $patched = Add-LiveReloadAsmdef $asm
     $p = $patched | ConvertFrom-Json
