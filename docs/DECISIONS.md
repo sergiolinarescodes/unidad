@@ -987,3 +987,38 @@ jump force 12 (the adapter spec says "force 6"; its own rule, numbers unchanged,
 the level, draws on an overlay document at `PanelOrder.Hud` and registers the bridge (Input) and the view (Presentation).
 F0's metas were re-rendered from the captured templates (`unity-metas.sh --rerender Packages`, new), keeping their GUIDs;
 the analyzer DLL's meta keeps its plugin settings.
+
+## analyzers-game-prefix: A game names its assembly prefix in `Assets/Default.globalconfig`
+
+2026-10-23, `analyzers-game-prefix` (amends U-150). The rules run on `Unidad.*` and on the game's prefix, read from the
+global analyzer config key `build_property.UnidadGamePrefix` (`SymbolFacts.GamePrefix`); absent or blank, it is `Cds`,
+so 11-unidad-unity is unchanged. UD016 uses the same prefix, and its message names it. A second game (12-unidad-unity,
+`Game.*`) previously got no checks at all.
+
+The key comes from one file, `<unity project>/Assets/Default.globalconfig`:
+
+```
+is_global = true
+build_property.UnidadGamePrefix = Game
+```
+
+Why a `.globalconfig` and not an MSBuild `CompilerVisibleProperty`: Unity's Bee compile (the user's editor) reads no
+MSBuild props. It passes `Assets/Default.globalconfig` as `/analyzerconfig:` to every assembly, asmdef and package ones
+alike (probed in the Sandbox: a `Probe.Game` asmdef with `UnidadGamePrefix = Probe` and a bare `Update()` failed Bee
+with UD002; the rsp carried `/analyzerconfig:"Assets/Default.globalconfig"`). MSBuild mode writes the same file into
+each `<Asm>.Analyzers.gen.props` as `EditorConfigFiles`. The sidecar reads it through one item in
+`dotnet/Directory.Build.props`, so Unity and the sidecar can never disagree:
+
+```xml
+<ItemGroup>
+  <EditorConfigFiles Include="$(RepoRoot)Assets/Default.globalconfig" Condition="Exists('$(RepoRoot)Assets/Default.globalconfig')" />
+</ItemGroup>
+```
+
+(`$(RepoRoot)Sandbox/Assets/...` here, where the Unity project is `Sandbox/`.) Do not also set the key through
+`CompilerVisibleProperty`: two global configs setting one key is a compiler warning, an error under
+`TreatWarningsAsErrors`. A per-assembly `.globalconfig` next to an asmdef replaces `Default.globalconfig` for that
+assembly in Unity, so it must repeat the key. The meta is a `DefaultImporter` (what Unity wrote in the probe), now
+`tools/meta-templates/globalconfig.meta`, so the pre-commit hook writes it. Seen in the probe and not changed here: in
+MSBuild mode the generated projects do not reference `Unidad.Analyzers.dll` at all, so the rules run in Bee and the
+sidecar only.

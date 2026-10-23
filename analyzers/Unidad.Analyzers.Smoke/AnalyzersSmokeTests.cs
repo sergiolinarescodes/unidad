@@ -201,5 +201,23 @@ namespace Unidad.Analyzers.Smoke
             Assert.That(AnalyzerHarness.Run("Cds.Room", "class CameraTuning { float Curve(float t) => t * 1.5f; }"),
                 Is.EqualTo(new[] { "UD006" }));
         }
+
+        [Test]
+        public void GamePrefix_FromGlobalConfig()
+        {
+            const string framework = "namespace Unidad.Core.Foo { class X { } }";
+            // Unset: Cds.* is analyzed, any other game is not.
+            Assert.That(AnalyzerHarness.Run("Cds.Room.View", Spinner), Is.EqualTo(new[] { "UD002" }));
+            Assert.That(AnalyzerHarness.Run("Game.Room.View", Spinner), Is.EqualTo(None));
+            Assert.That(AnalyzerHarness.Run("Game.Room", framework), Is.EqualTo(None));
+            // Set to Game: Game.* gets every rule, UD016 included; Cds.* no longer does; Unidad.* always does.
+            Assert.That(AnalyzerHarness.RunWithPrefix("Game.Room.View", "Game", Spinner), Is.EqualTo(new[] { "UD002" }));
+            Assert.That(AnalyzerHarness.RunWithPrefix("Game.Room", "Game", framework), Is.EqualTo(new[] { "UD016" }));
+            Assert.That(AnalyzerHarness.RunWithPrefix("Cds.Room.View", "Game", Spinner), Is.EqualTo(None));
+            Assert.That(AnalyzerHarness.RunWithPrefix("Unidad.Adapter", "Game", Spinner), Is.EqualTo(new[] { "UD002" }));
+            Assert.That(AnalyzerHarness.RunWithPrefix("Gameplay.Room.View", "Game", Spinner), Is.EqualTo(None));
+            Assert.That(AnalyzerHarness.DiagnosticsWithPrefix("Game.Room", "Game", framework)[0].GetMessage(),
+                Does.Contain("use Game.<Module>"));
+        }
     }
 }
