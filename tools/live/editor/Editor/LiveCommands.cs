@@ -163,8 +163,8 @@ namespace Unidad.Live.Editor
         }
     }
 
-    /// <summary>The game view's own render target, read the way the Pipeline's capture game_view reads it (overlay UI
-    /// included), but written to an absolute path with no AssetDatabase import.</summary>
+    /// <summary>The live frame: cameras plus screen-space UI Toolkit panels composed off-screen (see Png), sized like
+    /// the game look capture; written to an absolute path with no AssetDatabase import.</summary>
     internal static class Capture
     {
         static readonly Type PlayModeView = Type.GetType("UnityEditor.PlayModeView,UnityEditor");
@@ -201,19 +201,44 @@ namespace Unidad.Live.Editor
             catch (Exception e) { Debug.LogWarning("[live] could not size the game view: " + e.GetBaseException().Message); }
         }
 
+        // The frame as the player composes it: every screen camera by depth into one w x h target, then every shown
+        // screen-space UI Toolkit panel by sorting order, alpha-blended on top. The Game view's own target holds no
+        // runtime panels on 7000.0.0a10 (it read black over the Movement sample's HUD), and this needs no Game view.
         internal static byte[] Png(int w, int h)
         {
-            var view = PlayModeView.GetMethod("GetMainPlayModeView", Any).Invoke(null, null);
-            var source = view == null ? null : PlayModeView.GetField("m_TargetTexture", Any).GetValue(view) as RenderTexture;
-            if (source == null || !source.IsCreated()) throw new InvalidOperationException("no Game view render target (is the editor windowed with a Game view?)");
-            var outRt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32);
+            var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32);
             var prev = RenderTexture.active;
             var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
             try
             {
-                if (SystemInfo.graphicsUVStartsAtTop) Graphics.Blit(source, outRt, new Vector2(1f, -1f), new Vector2(0f, 1f));
-                else Graphics.Blit(source, outRt);
-                RenderTexture.active = outRt;
+                RenderTexture.active = rt;
+                GL.Clear(true, true, Color.black);
+                foreach (var cam in Camera.allCameras.Where(c => c.targetTexture == null).OrderBy(c => c.depth))
+                {
+                    cam.targetTexture = rt;
+                    try { cam.Render(); } finally { cam.targetTexture = null; }
+                }
+                RenderTexture.active = rt;
+                GL.PushMatrix();
+                GL.LoadPixelMatrix(0, w, h, 0);
+                foreach (var document in Object.FindObjectsByType<UIDocument>()
+                             .Where(d => d.panelSettings != null && d.panelSettings.targetTexture == null && d.rootVisualElement?.panel != null)
+                             .OrderBy(d => d.panelSettings.sortingOrder))
+                {
+                    var root = document.rootVisualElement;
+                    if (root.resolvedStyle.display == DisplayStyle.None || root.worldBound.width <= 0f) continue;
+                    var ui = root.CaptureToRenderTexture();
+                    try
+                    {
+                        // shortcut: on 7000.0.0a10 the capture scales the content by pixelsPerPoint twice; drawn at
+                        // 1/ppp it lands where the player draws it. Recheck after an editor upgrade.
+                        var ppp = root.panel.scaledPixelsPerPoint;
+                        RenderTexture.active = rt;
+                        Graphics.DrawTexture(new Rect(0, 0, ui.width / ppp, ui.height / ppp), ui);
+                    }
+                    finally { ui.Release(); Object.DestroyImmediate(ui); }
+                }
+                GL.PopMatrix();
 #pragma warning disable UD012 // the readback is the job: one frame grab per live.shot call
                 tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
                 tex.Apply();
@@ -223,7 +248,7 @@ namespace Unidad.Live.Editor
             finally
             {
                 RenderTexture.active = prev;
-                RenderTexture.ReleaseTemporary(outRt);
+                RenderTexture.ReleaseTemporary(rt);
                 Object.DestroyImmediate(tex);
             }
         }

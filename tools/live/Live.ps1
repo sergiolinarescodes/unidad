@@ -191,10 +191,10 @@ public static int Park(uint target, IntPtr userWindow) {
 
 # Starts the editor with no window activation and no inherited handles; returns its Process. Remembers the window that
 # had the foreground so Hide-LiveWindows can hand it back.
-function Start-LiveEditor([string]$Editor, [string]$ProjectPath, [string]$LogFile) {
+function Start-LiveEditor([string]$Editor, [string]$ProjectPath, [string]$LogFile, [switch]$Batch) {
     Initialize-LiveWin32
     $script:LiveUserWindow = [UnidadLiveWin32]::GetForegroundWindow()
-    $id = [UnidadLiveWin32]::Start($Editor, "-projectPath `"$ProjectPath`" -logFile `"$LogFile`"", (Split-Path $ProjectPath -Parent))
+    $id = [UnidadLiveWin32]::Start($Editor, "$(if ($Batch) { '-batchmode ' })-projectPath `"$ProjectPath`" -logFile `"$LogFile`"", (Split-Path $ProjectPath -Parent))
     Get-Process -Id $id
 }
 

@@ -291,7 +291,7 @@ try {
     # Start-LiveEditor: no inherited handles (the editor outlives this script), never activated, parked off-screen.
     foreach ($k in $envs.Keys) { Set-Item "env:$k" $envs[$k] }
     $script:hideWindows = $true
-    $p = Start-LiveEditor $editor $proj $log
+    $p = Start-LiveEditor $editor $proj $log -Batch:([bool]$live.batchmode)
     Register-TrackedRun $p 'live' $slotPath $Branch 'live' ([int]($cap * 60) + 300) 'agent' | Out-Null
     $seat.Pid = $p.Id; $seat.ProcessStart = $p.StartTime.ToUniversalTime().ToString('o')
     $seat.Launch = $launch; $seat.Touch = $touch; $seat.Log = $log
