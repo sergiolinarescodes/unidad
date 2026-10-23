@@ -132,30 +132,21 @@ function Invoke-LiveCommand([int]$EditorPid, [string[]]$Command, [string[]]$Argu
 }
 
 # --- the window: out of sight, never focused -------------------------------------------------------------------------
+# A minimised editor does not tick (no Play frames, no capture, and its idle watchdog never fires: seen on 7000.0.0a10),
+# so the live editor stays restored but parked off-screen at the bottom of the z-order, and keyboard focus goes back to
+# whatever window had it before the launch.
 
-# Starts the editor through `start /min` (SW_SHOWMINNOACTIVE: minimised and not activated, so it never takes the user's
-# keyboard) and returns its Process, found by the project path on its command line.
-function Start-LiveEditor([string]$Editor, [string]$ProjectPath, [string]$LogFile, [int]$TimeoutSec = 60) {
-    $before = @(Get-Process -Name Unity -ErrorAction SilentlyContinue | ForEach-Object Id)
-    & cmd /c start '""' /min "`"$Editor`"" -projectPath "`"$ProjectPath`"" -logFile "`"$LogFile`""
-    $want = ($ProjectPath -replace '\\', '/').ToLowerInvariant()
-    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSec)
-    while ([DateTime]::UtcNow -lt $deadline) {
-        foreach ($p in Get-CimInstance Win32_Process -Filter "Name = 'Unity.exe'" -ErrorAction SilentlyContinue) {
-            if ($before -notcontains $p.ProcessId -and ($p.CommandLine -replace '\\', '/').ToLowerInvariant().Contains($want)) { return Get-Process -Id $p.ProcessId }
-        }
-        Start-Sleep -Milliseconds 250
-    }
-    throw "no Unity process for $ProjectPath appeared in $TimeoutSec s"
-}
-
-# Parks every visible top-level window of the process off-screen, restored and not activated. A minimised editor does
-# not tick (no Play frames, no capture, and its idle watchdog never fires), so the window stays restored but out of the
-# user's sight, at the bottom of the z-order; called while the editor loads. Returns how many it moved.
-function Hide-LiveWindows([int]$ProcessId) {
-    if (!('UnidadLiveWin32' -as [type])) {
-        Add-Type -Namespace '' -Name UnidadLiveWin32 -MemberDefinition @'
+function Initialize-LiveWin32 {
+    if ('UnidadLiveWin32' -as [type]) { return }
+    Add-Type -Namespace '' -Name UnidadLiveWin32 -MemberDefinition @'
 [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] public struct STARTUPINFO {
+    public int cb; public string reserved, desktop, title; public int x, y, w, h, xChars, yChars, fill, flags; public short show, reserved2;
+    public IntPtr reserved3, stdIn, stdOut, stdErr; }
+[StructLayout(LayoutKind.Sequential)] public struct PROCINFO { public IntPtr process, thread; public int pid, tid; }
+[DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool CreateProcess(string app, System.Text.StringBuilder cmd,
+    IntPtr pa, IntPtr ta, bool inherit, uint flags, IntPtr env, string cwd, ref STARTUPINFO si, out PROCINFO pi);
+[DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
 [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr l);
 [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
 [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
@@ -167,21 +158,49 @@ function Hide-LiveWindows([int]$ProcessId) {
 [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr h, int i, int v);
 [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
 [DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
 public delegate bool EnumProc(IntPtr h, IntPtr l);
-public static int Park(uint target) {
+// No inherited handles (the editor must not hold the caller's pipes open) and SW_SHOWNOACTIVATE for its first window.
+public static int Start(string exe, string args, string cwd) {
+    var si = new STARTUPINFO(); si.cb = Marshal.SizeOf(si); si.flags = 1; si.show = 4;   // STARTF_USESHOWWINDOW, SW_SHOWNOACTIVATE
+    PROCINFO pi;
+    if (!CreateProcess(exe, new System.Text.StringBuilder("\"" + exe + "\" " + args), IntPtr.Zero, IntPtr.Zero, false, 0, IntPtr.Zero, cwd, ref si, out pi))
+        throw new System.ComponentModel.Win32Exception();
+    CloseHandle(pi.thread); CloseHandle(pi.process);
+    return pi.pid;
+}
+// Parks the process's visible top-level windows; hands the foreground back to userWindow if the editor took it.
+public static int Park(uint target, IntPtr userWindow) {
     int n = 0, left = GetSystemMetrics(76) - 4000;   // SM_XVIRTUALSCREEN: 4000 px left of every monitor
     EnumWindows((h, l) => {
         uint pid; GetWindowThreadProcessId(h, out pid);
         if (pid != target || !IsWindowVisible(h)) return true;
         RECT r; GetWindowRect(h, out r);
         if (r.L <= left + 100 && !IsIconic(h) && !IsZoomed(h)) return true;   // already parked
-        if (IsIconic(h)) ShowWindow(h, 4);   // SW_SHOWNOACTIVATE restores without focus
+        if (IsIconic(h)) ShowWindow(h, 4);   // SW_SHOWNOACTIVATE
         if (IsZoomed(h)) SetWindowLong(h, -16, GetWindowLong(h, -16) & ~0x01000000);   // drop WS_MAXIMIZE
         SetWindowPos(h, new IntPtr(1), left, 0, 1700, 1000, 0x0030);   // HWND_BOTTOM, SWP_NOACTIVATE|SWP_FRAMECHANGED
         n++; return true; }, IntPtr.Zero);
+    uint fgPid; GetWindowThreadProcessId(GetForegroundWindow(), out fgPid);
+    if (fgPid == target && userWindow != IntPtr.Zero) SetForegroundWindow(userWindow);
     return n;
 }
 '@
-    }
-    [UnidadLiveWin32]::Park([uint32]$ProcessId)
+}
+
+# Starts the editor with no window activation and no inherited handles; returns its Process. Remembers the window that
+# had the foreground so Hide-LiveWindows can hand it back.
+function Start-LiveEditor([string]$Editor, [string]$ProjectPath, [string]$LogFile) {
+    Initialize-LiveWin32
+    $script:LiveUserWindow = [UnidadLiveWin32]::GetForegroundWindow()
+    $id = [UnidadLiveWin32]::Start($Editor, "-projectPath `"$ProjectPath`" -logFile `"$LogFile`"", (Split-Path $ProjectPath -Parent))
+    Get-Process -Id $id
+}
+
+# Parks the editor's windows off-screen (see above); called while the editor loads and enters Play. Returns how many moved.
+function Hide-LiveWindows([int]$ProcessId) {
+    Initialize-LiveWin32
+    $user = if ($script:LiveUserWindow) { $script:LiveUserWindow } else { [IntPtr]::Zero }
+    [UnidadLiveWin32]::Park([uint32]$ProcessId, $user)
 }
