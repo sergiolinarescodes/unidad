@@ -191,7 +191,9 @@ function Test-LiveMethodReload([string]$Old, [string]$New) {
     $sa = & $skeleton $Old $a; $sb = & $skeleton $New $b
     for ($k = 0; $k -lt [Math]::Max($sa.Count, $sb.Count); $k++) {
         if ($sa[$k] -cne $sb[$k]) {
-            $what = if ($k -lt $sb.Count) { "'$($sb[$k])'" } else { "removed '$($sa[$k])'" }
+            $what = if ($k -ge $sb.Count -or ($sa.Count -gt $sb.Count -and $sa[$k + 1] -ceq $sb[$k])) { "removed '$($sa[$k])'" }
+                    elseif ($k -ge $sa.Count -or ($sb.Count -gt $sa.Count -and $sb[$k + 1] -ceq $sa[$k])) { "added '$($sb[$k])'" }
+                    else { "'$($sb[$k])'" }
             return @{ Reload = $false; Reason = "changed outside a [MethodReload] body: $what"; Methods = @() }
         }
     }

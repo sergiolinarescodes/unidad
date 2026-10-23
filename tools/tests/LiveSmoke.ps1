@@ -108,7 +108,8 @@ public sealed class View
     $sig = Test-LiveMethodReload $cs (& $edit 'Tick(float dt)' 'Tick(float dt, int n)')
     Assert (!$sig.Reload -and $sig.Reason -match 'Tick\(float dt, int n\)') 'Reload_SignatureChangeRecompiles'
     $member = Test-LiveMethodReload $cs (& $edit '    public void Other()' "    public int Added;`n    public void Other()")
-    Assert (!$member.Reload -and $member.Reason -match 'public int Added;') 'Reload_NewMemberRecompiles'
+    $removed = Test-LiveMethodReload ($cs.Replace('    public void Other()', "    public int Added;`n    public void Other()")) $cs
+    Assert (!$member.Reload -and $member.Reason -match "added 'public int Added;'" -and $removed.Reason -match "removed 'public int Added;'") 'Reload_NewOrRemovedMemberRecompiles'
     Assert (!(Test-LiveMethodReload $cs (& $edit 'Tint = Color.white;' 'Tint = Color.black;')).Reload) 'Reload_FieldChangeRecompiles'
     Assert (!(Test-LiveMethodReload $cs (& $edit 'Count = 1;' 'Count = 2;')).Reload) 'Reload_UnmarkedMethodRecompiles'
     Assert (!(Test-LiveMethodReload $cs (& $edit '    [global::Unity.Pipeline.MethodReload.MethodReload]' '')).Reload -and

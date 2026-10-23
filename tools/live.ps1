@@ -108,7 +108,7 @@ function Invoke-Prepare([string]$Slot) {
         Push-Location $Slot
         try { & pwsh -NoProfile -File $cfg.lane.prepare | Out-Null } finally { Pop-Location }
     }
-    if ($live.methodReload) { Install-LiveMethodReload $Slot (Get-UnityProjectPath $cfg $Slot) | ForEach-Object { Write-Host "live: method reload on in $_" } }
+    if ($live.methodReload) { Install-LiveMethodReload $Slot (Get-UnityProjectPath $cfg $Slot) | Out-Null }
 }
 # Leave Play, import, compile, play again; a red compile exits 1 with the editor in Edit mode.
 function Invoke-Recompile {
@@ -296,7 +296,7 @@ try {
     $exclude = git -C $slotPath rev-parse --path-format=absolute --git-path info/exclude
     Install-LiveOverlay (Join-Path $PSScriptRoot 'live/editor') $slotPath $overlay $exclude.Trim() | Out-Null
     git -C $slotPath update-index --skip-worktree -- $lock 2>$null   # the overlay's dependencies rewrite the lock file
-    Say "slot $slotPath at $($commit.Sha.Substring(0, 7)) ($($commit.Source)), $($changes.Count) uncommitted file(s) from $From, overlay $overlay"
+    Say "slot $slotPath at $($commit.Sha.Substring(0, 7)) ($($commit.Source)), $($changes.Count) uncommitted file(s) from $From, overlay $overlay$(if ($live.methodReload) { ', method reload on (UNIDAD_LIVE)' })"
 
     if (!(Test-Path -LiteralPath (Join-Path $proj 'Library'))) {
         $src = @(@($cfg.unitySlots) + $cfg.loopSlot + $cfg.testbedSlot | Where-Object { $_ } | Where-Object {
