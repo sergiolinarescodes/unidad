@@ -987,3 +987,30 @@ jump force 12 (the adapter spec says "force 6"; its own rule, numbers unchanged,
 the level, draws on an overlay document at `PanelOrder.Hud` and registers the bridge (Input) and the view (Presentation).
 F0's metas were re-rendered from the captured templates (`unity-metas.sh --rerender Packages`, new), keeping their GUIDs;
 the analyzer DLL's meta keeps its plugin settings.
+
+## live-iterate: a live editor for the inner look loop (`tools/live.ps1`)
+
+2026-10-23, live-iterate (the user: "test and reiterate without having to close the window"). `tools/live.ps1` keeps
+one Unity editor in Play on the developer's branch in a live slot (`../<slotPrefix>-live1|2`); `-Sync` copies the code
+slot's changes and routes them (stylesheets/assets import in place and stay in Play, `live.replayPaths` re-enter Play,
+`.cs`/asmdef/package recompile in the open editor and re-enter Play), `-Shot`/`-Tour` write frames with the player look
+run's `frames.jsonl` format (header `"live": true`). Fixed: at most two live editors on the machine, a separate seat
+pool apart from the lane's editor lock (U-55); each closes itself after `live.idleMinutes` (10) without a live command
+or `live.capMinutes` (60); a live frame is never a verdict round (the player-build look is). The Unity CLI's
+`com.unity.pipeline` and the `live.*` commands are an overlay package written only into the live slot, git-excluded
+there, never in a shipped manifest. The editor runs `-batchmode` with one floating Game view parked off-screen and
+never activated (a minimised editor stops ticking, so its idle watchdog never fired: seen on 7000.0.0a10). Frames are
+composed from the cameras plus `CaptureToRenderTexture` of each screen-space UI Toolkit panel, because the Game view's
+render target holds no runtime panels on this alpha. `docs/LIVE.md` is the manual. Not built: `[MethodReload]` on game
+code (needs the package in a shipped manifest), `reload_player`, new input injection.
+
+## search-index-startup: every framework launch turns off Unity Search startup indexing
+
+2026-10-23, live-iterate. On 7000.0.0a10 a project with no `UserSettings/Search.index` throws
+`ArgumentOutOfRangeException` from `SearchInit.IndexationOnStartup` (`SearchDatabase.EnumerateAll().First()`) because
+`Search.settings` `indexOnEditorStartup` defaults to true; the first live editor showed it. 11-unidad-unity fixed it
+game-side (`tools/prepare-slot.ps1`, its fix-search-index-startup). The framework now does it generically:
+`Set-SearchIndexStartupOff` (`tools/lib/UnidadTools.ps1`) creates, flips or appends `indexOnEditorStartup = false`
+(other keys kept) and `unity-lane.ps1`, `testbed.ps1`, `seed-unity.ps1` and `live.ps1 -Open` call it before Unity
+starts. A game's own copy (11's `prepare-slot.ps1` as `lane.prepare`) can be dropped after the next sync. Remove both
+once a Unity release builds an empty default index without throwing.

@@ -46,9 +46,12 @@ local branch, else `origin/<b>`) and copies your uncommitted files over it.
   A red compile prints its errors and leaves the editor open in Edit mode: fix and `-Sync` again.
 - **-Eval** runs C# in the open editor (the Unity CLI's `script eval`). It dies with the Play session: anything worth
   keeping goes into the source, then `-Sync`.
-- **-Shot** writes `<Out>/frames/<n>.png` at `live.size` (1600x900 by default) from the Game view's own render target,
-  so screen-space UI Toolkit and TMP overlays are in it, and appends a `frames.jsonl` line (`frame`, `sha256`, `t`,
-  `unityFrame`, `label`). The `tools/look/*.py` scripts read a live folder unchanged.
+- **-Shot** writes `<Out>/frames/<n>.png` at `live.size` (1600x900 by default) and appends a `frames.jsonl` line
+  (`frame`, `sha256`, `t`, `unityFrame`, `label`). The frame is composed the way the player composes it: every screen
+  camera by depth, then every shown screen-space UI Toolkit panel by sorting order (`VisualElement.CaptureToRenderTexture`),
+  alpha-blended on top, at the panel scale a 1600x900 screen gives. The Game view's own render target is not used: on
+  7000.0.0a10 it holds no runtime panels (it read black over the Movement sample's HUD). World-space UI and anything a
+  camera draws are in it through the cameras. The `tools/look/*.py` scripts read a live folder unchanged.
 - **-Tour** needs `live.tour` in `tools/repo.json`: the launch keys that make the game play a tour file and capture its
   frames. `-Until <label>` cuts the tour at its first line naming the label and appends `live.tour.hold`, so Play
   stays on that label (`-Replay` re-runs it to the same point). Without `-Until` the tour plays to its end and Play is
@@ -62,8 +65,33 @@ local branch, else `origin/<b>`) and copies your uncommitted files over it.
   `-Open` waits `-WaitMinutes` (5) for a seat, then exits 3: fall back to the normal look run.
 - Each editor **closes itself** after `live.idleMinutes` (10) without a live command, or `live.capMinutes` (60) after it
   started, whichever comes first (`-IdleMinutes`/`-CapMinutes` on `-Open` lower them). Every verb counts as a command.
-- The editor is a windowed editor (the Game view is what gets captured); it is registered with the launch guard, so
-  `testbed.ps1 -StopAll` ends it, and no other tool opens or kills it.
+- To lower a running editor's limits (to test the idle close, say):
+  `live.ps1 -Eval 'System.Environment.SetEnvironmentVariable("UNIDAD_LIVE_IDLE_SECONDS", "30"); return "ok";'`; the
+  watchdog reads `UNIDAD_LIVE_IDLE_SECONDS` / `UNIDAD_LIVE_CAP_SECONDS` on every check.
+- It is registered with the launch guard, so `testbed.ps1 -StopAll` ends it, and no other tool opens or kills it.
+
+## The window: none in front of you
+
+`live.batchmode` (default `true`) starts the editor with `-batchmode`: no main window. It still serves the CLI, plays,
+imports and recompiles. Its one window is a floating Game view the overlay makes at load, at `live.size`, so `Screen`
+and every panel's scale match the look capture size; it is parked 4000 px left of every monitor, at the bottom of the
+z-order, never activated, and re-parked every second (Unity clamps its own window positions onto a monitor; Win32
+`SetWindowPos` does not). With `live.batchmode: false` the full editor window opens the same way (`CreateProcess` with
+`SW_SHOWNOACTIVATE`, then parked off-screen by `live.ps1` until the overlay takes over). It is never minimised: a
+minimised editor stops ticking (no Play frames and, worse, its idle watchdog never fires; seen on 7000.0.0a10). If the
+foreground ends up on the editor anyway, `live.ps1` hands it back to the window that had it before `-Open`.
+
+The taskbar shows it as `[live <repo>/<branch>: closes itself after <n> min idle] ...` (the window title while it
+loads, then `Game`). You never need to close it: it closes itself after `live.idleMinutes` without a live command and
+`live.capMinutes` in all; `-Close` ends it at once.
+
+## Startup: zero errors
+
+Every framework launch (`unity-lane.ps1`, `testbed.ps1`, `seed-unity.ps1`, `live.ps1 -Open`) first writes
+`indexOnEditorStartup = false` into `<project>/UserSettings/Search.settings` (`Set-SearchIndexStartupOff`,
+`tools/lib/UnidadTools.ps1`): on 7000.0.0a10 a project with no `UserSettings/Search.index` throws
+`ArgumentOutOfRangeException` from `SearchInit.IndexationOnStartup` at every editor start (docs/DECISIONS.md
+`search-index-startup`). A live open of the Sandbox logs no exception and no `LogError`.
 
 ## The overlay: nothing ships
 
@@ -78,6 +106,7 @@ never shows a change and nothing is ever committed from it.
 ```json
 "liveSlots": ["live1", "live2"],
 "live": {
+  "batchmode": true,
   "size": "1600x900",
   "idleMinutes": 10,
   "capMinutes": 60,
@@ -87,7 +116,8 @@ never shows a change and nothing is ever committed from it.
 }
 ```
 
-`lane.testbedMethod` is the door every live Play goes through; `lane.prepare` runs after every copy. `live.tour.set`
+`"batchmode": false` opens the full editor window (parked, see above) instead. `lane.testbedMethod` is the door every
+live Play goes through; `lane.prepare` runs after every copy. `live.tour.set`
 is a `-Set` string where `{tour}` is the (cut) tour file and `{frames}` the capture folder; leave `tour` out when the
 game has no tour driver. Every key has a default (`tools/lib/UnidadTools.ps1`).
 
