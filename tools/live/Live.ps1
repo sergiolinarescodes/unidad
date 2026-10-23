@@ -131,42 +131,57 @@ function Invoke-LiveCommand([int]$EditorPid, [string[]]$Command, [string[]]$Argu
     $value
 }
 
-# --- the window: minimised, never focused ---------------------------------------------------------------------------
+# --- the window: out of sight, never focused -------------------------------------------------------------------------
 
 # Starts the editor through `start /min` (SW_SHOWMINNOACTIVE: minimised and not activated, so it never takes the user's
 # keyboard) and returns its Process, found by the project path on its command line.
 function Start-LiveEditor([string]$Editor, [string]$ProjectPath, [string]$LogFile, [int]$TimeoutSec = 60) {
     $before = @(Get-Process -Name Unity -ErrorAction SilentlyContinue | ForEach-Object Id)
     & cmd /c start '""' /min "`"$Editor`"" -projectPath "`"$ProjectPath`"" -logFile "`"$LogFile`""
-    $want = ($ProjectPath -replace '\', '/').ToLowerInvariant()
+    $want = ($ProjectPath -replace '\\', '/').ToLowerInvariant()
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSec)
     while ([DateTime]::UtcNow -lt $deadline) {
         foreach ($p in Get-CimInstance Win32_Process -Filter "Name = 'Unity.exe'" -ErrorAction SilentlyContinue) {
-            if ($before -notcontains $p.ProcessId -and ($p.CommandLine -replace '\', '/').ToLowerInvariant().Contains($want)) { return Get-Process -Id $p.ProcessId }
+            if ($before -notcontains $p.ProcessId -and ($p.CommandLine -replace '\\', '/').ToLowerInvariant().Contains($want)) { return Get-Process -Id $p.ProcessId }
         }
         Start-Sleep -Milliseconds 250
     }
     throw "no Unity process for $ProjectPath appeared in $TimeoutSec s"
 }
 
-# Minimises every visible top-level window of the process without activating it (Unity restores its saved layout on
-# startup); called while the editor loads. Returns how many it minimised.
+# Parks every visible top-level window of the process off-screen, restored and not activated. A minimised editor does
+# not tick (no Play frames, no capture, and its idle watchdog never fires), so the window stays restored but out of the
+# user's sight, at the bottom of the z-order; called while the editor loads. Returns how many it moved.
 function Hide-LiveWindows([int]$ProcessId) {
     if (!('UnidadLiveWin32' -as [type])) {
         Add-Type -Namespace '' -Name UnidadLiveWin32 -MemberDefinition @'
-[DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);
-[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
-[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
-[DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
-[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+[StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+[DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr l);
+[DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+[DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+[DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+[DllImport("user32.dll")] static extern bool IsZoomed(IntPtr h);
+[DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
+[DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+[DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int i);
+[DllImport("user32.dll")] static extern int SetWindowLong(IntPtr h, int i, int v);
+[DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+[DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
 public delegate bool EnumProc(IntPtr h, IntPtr l);
-public static int MinimiseAll(uint target) {
-    int n = 0;
-    EnumWindows((h, l) => { uint pid; GetWindowThreadProcessId(h, out pid);
-        if (pid == target && IsWindowVisible(h) && !IsIconic(h)) { ShowWindow(h, 7); n++; } return true; }, IntPtr.Zero);
+public static int Park(uint target) {
+    int n = 0, left = GetSystemMetrics(76) - 4000;   // SM_XVIRTUALSCREEN: 4000 px left of every monitor
+    EnumWindows((h, l) => {
+        uint pid; GetWindowThreadProcessId(h, out pid);
+        if (pid != target || !IsWindowVisible(h)) return true;
+        RECT r; GetWindowRect(h, out r);
+        if (r.L <= left + 100 && !IsIconic(h) && !IsZoomed(h)) return true;   // already parked
+        if (IsIconic(h)) ShowWindow(h, 4);   // SW_SHOWNOACTIVATE restores without focus
+        if (IsZoomed(h)) SetWindowLong(h, -16, GetWindowLong(h, -16) & ~0x01000000);   // drop WS_MAXIMIZE
+        SetWindowPos(h, new IntPtr(1), left, 0, 1700, 1000, 0x0030);   // HWND_BOTTOM, SWP_NOACTIVATE|SWP_FRAMECHANGED
+        n++; return true; }, IntPtr.Zero);
     return n;
 }
 '@
     }
-    [UnidadLiveWin32]::MinimiseAll([uint32]$ProcessId)
+    [UnidadLiveWin32]::Park([uint32]$ProcessId)
 }
