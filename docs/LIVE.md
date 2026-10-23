@@ -121,6 +121,18 @@ live Play goes through; `lane.prepare` runs after every copy. `live.tour.set`
 is a `-Set` string where `{tour}` is the (cut) tour file and `{frames}` the capture folder; leave `tour` out when the
 game has no tour driver. Every key has a default (`tools/lib/UnidadTools.ps1`).
 
+## What it costs (Sandbox / Movement, 7000.0.0a10, one editor throughout)
+
+| step | wall time |
+|---|---|
+| `-Open` (Library already there, batchmode, into Play) | 31 s |
+| `-Shot` | 3.7 s (capture itself 60-75 ms; the rest is the CLI round trip) |
+| `-Sync` of a `.uss` (import in place, still in Play) | 7 s |
+| `-Sync` of a one-line `.cs` (compile 15 s, back in Play) | 28 s |
+| `-Eval` | 5 s |
+| `-Replay` | 13 s |
+| idle close with the limit at 30 s | the editor exits 30 s after the last command, seat free |
+
 ## Not built
 
 - `[MethodReload]` hot reload of game methods: it needs `com.unity.pipeline` in the shipped manifest.
