@@ -79,6 +79,59 @@ try {
     $threw = $false; try { Get-LiveTourCut $tour 'door' @() | Out-Null } catch { $threw = $true }
     Assert $threw 'Tour_UnknownLabelThrows'
 
+    # Method reload: only body edits of [MethodReload] methods stay in Play; anything else recompiles.
+    $cs = @'
+using UnityEngine;
+public sealed class View
+{
+    public Color Tint = Color.white;
+    public int Count { get; set; }
+#if UNIDAD_LIVE
+    [global::Unity.Pipeline.MethodReload.MethodReload]
+#endif
+    public void Tick(float dt)
+    {
+        var label = $"n={Count} {{ok}}"; // a } in a comment
+        Tint = new Color(0.95f, 0.55f, 0.15f); /* { */ var c = '}';
+    }
+    [Obsolete("x"), MethodReload(Id = "v.size")] public float Size() => Count * 2f;
+    public void Other() { Count = 1; }
+}
+'@
+    $edit = { param($From, $To) $cs.Replace($From, $To) }
+    $body = Test-LiveMethodReload $cs (& $edit '0.95f, 0.55f, 0.15f' '0.2f, 0.8f, 0.3f')
+    Assert ($body.Reload -and ($body.Methods -join ',') -eq 'Tick') 'Reload_BodyEditStaysInPlay'
+    $expr = Test-LiveMethodReload $cs (& $edit 'Count * 2f;' 'Count * 3f + 1f;')
+    Assert ($expr.Reload -and ($expr.Methods -join ',') -eq 'Size') 'Reload_ExpressionBodyEdit'
+    Assert ((Get-LiveReloadBodies $cs).Count -eq 2 -and (Test-LiveMethodReload $cs ($cs -replace "`n", "`r`n")).Reload) 'Reload_BracesInStringsAndCommentsAndLineEndings'
+    $sig = Test-LiveMethodReload $cs (& $edit 'Tick(float dt)' 'Tick(float dt, int n)')
+    Assert (!$sig.Reload -and $sig.Reason -match 'Tick\(float dt, int n\)') 'Reload_SignatureChangeRecompiles'
+    $member = Test-LiveMethodReload $cs (& $edit '    public void Other()' "    public int Added;`n    public void Other()")
+    Assert (!$member.Reload -and $member.Reason -match 'public int Added;') 'Reload_NewMemberRecompiles'
+    Assert (!(Test-LiveMethodReload $cs (& $edit 'Tint = Color.white;' 'Tint = Color.black;')).Reload) 'Reload_FieldChangeRecompiles'
+    Assert (!(Test-LiveMethodReload $cs (& $edit 'Count = 1;' 'Count = 2;')).Reload) 'Reload_UnmarkedMethodRecompiles'
+    Assert (!(Test-LiveMethodReload $cs (& $edit '    [global::Unity.Pipeline.MethodReload.MethodReload]' '')).Reload -and
+            !(Test-LiveMethodReload 'class A { void B() { } }' 'class A { void B() { int x; } }').Reload) 'Reload_UnmarkingOrUnmarkedFileRecompiles'
+    Assert (!(Test-LiveMethodReload $cs (& $edit 'var c = ' 'var c = {')).Reload) 'Reload_UnbalancedBracesRecompile'
+    $r = { param($routes, $pending) $x = Select-LiveSyncRoute $routes $pending; "$($x.Route)$(if ($x.Why) { '!' })" }
+    Assert ((& $r @('reload', 'reload') $false) -eq 'reload' -and (& $r @('reload', 'recompile') $false) -eq 'recompile' -and
+            (& $r @('reload', 'style') $false) -eq 'recompile!' -and (& $r @('style') $true) -eq 'recompile!' -and
+            (& $r @('style') $false) -eq 'style' -and (& $r @('reload') $true) -eq 'reload') 'Reload_SyncRouteRules'
+    $asm = '{ "name": "G.View", "references": ["G.Logic"], "versionDefines": [] }'
+    $patched = Add-LiveReloadAsmdef $asm
+    $p = $patched | ConvertFrom-Json
+    Assert (($p.references -join ',') -eq 'G.Logic,Unity.Pipeline,Unity.Pipeline.Attributes' -and $p.versionDefines[0].define -eq 'UNIDAD_LIVE' -and
+            $p.versionDefines[0].name -eq 'com.unity.pipeline' -and (Add-LiveReloadAsmdef $patched) -ceq $patched) 'Reload_AsmdefPatchIdempotent'
+    $rs = Join-Path $Temp 'rslot'
+    New-Item -ItemType Directory -Force "$rs/Pkg/Samples~/S/View", "$rs/Proj/Assets/Samples/S/View", "$rs/Proj/Library/S" | Out-Null
+    Set-Content "$rs/Pkg/Samples~/S/View/Host.cs" $cs; Set-Content "$rs/Proj/Assets/Samples/S/View/Host.cs" $cs; Set-Content "$rs/Proj/Library/S/Host.cs" $cs
+    Set-Content "$rs/Proj/Assets/Samples/S/View/S.View.asmdef" $asm; Set-Content "$rs/Pkg/Samples~/S/View/S.View.asmdef" $asm
+    Assert ((Resolve-LiveCompiledFile $rs "$rs/Proj" 'Pkg/Samples~/S/View/Host.cs') -eq ("$rs/Proj/Assets/Samples/S/View/Host.cs" -replace '\\', '/') -and
+            (Resolve-LiveCompiledFile $rs "$rs/Proj" 'Proj/Assets/X.cs') -eq ("$rs/Proj/Assets/X.cs" -replace '\\', '/')) 'Reload_CompiledFileOfASampleCopy'
+    $first = @(Install-LiveMethodReload $rs); $second = @(Install-LiveMethodReload $rs)
+    Assert ($first.Count -eq 1 -and $first[0] -match 'Proj[\\/]Assets' -and $second.Count -eq 0 -and
+            [IO.File]::ReadAllText("$rs/Pkg/Samples~/S/View/S.View.asmdef").Trim() -eq $asm) 'Reload_InstallPatchesVisibleAsmdefsOnce'
+
     # Manifest: header once with live=true, then one entry per frame; names count up.
     $frames = Join-Path $Temp 'run/frames'; New-Item -ItemType Directory -Force $frames | Out-Null
     Assert ((Get-NextFrameName $frames) -eq '00000.png') 'Frames_FirstName'

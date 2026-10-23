@@ -26,7 +26,6 @@ namespace Unidad.Samples.Movement.View
     internal sealed class MovementHost : IStageHost
     {
         private static readonly Color PlatformColor = new(0.3f, 0.35f, 0.42f);
-        private static readonly Color BoxColor = new(0.95f, 0.55f, 0.15f);
         private const float PlatformThickness = 1f;
 
         private readonly IMovementService _movement;
@@ -48,7 +47,7 @@ namespace Unidad.Samples.Movement.View
             var root = context.Panels.Overlay("Movement", PanelOrder.Hud).Root;
             root.Add(Rect(LeftPlatformMinX, PlatformTopY, LeftPlatformMaxX - LeftPlatformMinX, PlatformThickness, PlatformColor));
             root.Add(Rect(RightPlatformMinX, PlatformTopY, RightPlatformMaxX - RightPlatformMinX, PlatformThickness, PlatformColor));
-            var box = Rect(-BoxHalf, BoxHalf, BoxHalf * 2f, BoxHalf * 2f, BoxColor);
+            var box = Rect(-BoxHalf, BoxHalf, BoxHalf * 2f, BoxHalf * 2f, Color.clear);
             root.Add(box);
 
             _ticks.Register(new MovementInputBridge(_movement), TickGroup.Input);
@@ -69,22 +68,29 @@ namespace Unidad.Samples.Movement.View
         }
     }
 
-    /// <summary>Mirrors the box's position each frame; owns no rules.</summary>
-    internal sealed class MovementView : ITickable
+    /// <summary>
+    /// Mirrors the box's position and colour each frame; owns no rules. Public, with public members, because a live
+    /// editor hot-reloads <see cref="Tick"/> (docs/LIVE.md): a reloaded body reaches public members only.
+    /// </summary>
+    public sealed class MovementView : ITickable
     {
-        private readonly IMovementService _movement;
-        private readonly VisualElement _box;
-
         public MovementView(IMovementService movement, VisualElement box)
         {
-            _movement = movement;
-            _box = box;
+            Movement = movement;
+            Box = box;
         }
 
+        public IMovementService Movement { get; }
+        public VisualElement Box { get; }
+
+#if UNIDAD_LIVE
+        [global::Unity.Pipeline.MethodReload.MethodReload]
+#endif
         public void Tick(float deltaTime)
         {
-            var p = _movement.State.Position;
-            _box.style.translate = new Translate(p.x * PixelsPerUnit, -p.y * PixelsPerUnit);
+            var p = Movement.State.Position;
+            Box.style.translate = new Translate(p.x * PixelsPerUnit, -p.y * PixelsPerUnit);
+            Box.style.backgroundColor = new Color(0.95f, 0.55f, 0.15f);
         }
     }
 }
