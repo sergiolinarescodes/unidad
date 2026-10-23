@@ -31,6 +31,8 @@ $script:RepoDefaults = @{
     unitySlots    = @('unity1')
     loopSlot      = 'loop'
     testbedSlot   = 'testbed'
+    liveSlots     = @('live1', 'live2')
+    live          = @{ size = '1600x900'; idleMinutes = 10; capMinutes = 60; settleSeconds = 3; replayPaths = @(); tour = $null }
     sidecar       = @{ solution = 'dotnet/Unidad.Sidecar.slnx'; viewCheckSolution = 'dotnet/Unidad.ViewCheck.slnx' }
     parity        = @{ roots = @('Packages'); logicDir = 'dotnet'; checkDir = 'dotnet/Check'; projectPrefixes = @('Unidad.'); ignoreProjects = @('Unidad.Analyzers') }
     lane          = @{
