@@ -273,7 +273,9 @@ namespace Unidad.Live.Editor
     internal static class LiveWatchdog
     {
         static readonly string Touch = Environment.GetEnvironmentVariable("UNIDAD_LIVE_TOUCH");
-        static readonly double Idle = Seconds("UNIDAD_LIVE_IDLE_SECONDS", 600), Cap = Seconds("UNIDAD_LIVE_CAP_SECONDS", 3600);
+        // read on every check: `live.ps1 -Eval` can lower them in a running editor (SetEnvironmentVariable)
+        static double Idle => Seconds("UNIDAD_LIVE_IDLE_SECONDS", 600);
+        static double Cap => Seconds("UNIDAD_LIVE_CAP_SECONDS", 3600);
         static readonly DateTime Started = Process.GetCurrentProcess().StartTime.ToUniversalTime();
         static readonly Stopwatch Throttle = Stopwatch.StartNew();
 

@@ -70,7 +70,7 @@ function Install-LiveOverlay([string]$Source, [string]$SlotRoot, [string]$RelPat
 
 # One manifest line per live frame, in <frames>/frames.jsonl (line 0 the header, "live": true): tools/look scripts read
 # a live folder like a player run's, and a verdict check refuses it (no tour or checklist hashes, no round).
-function Add-LiveFrame([string]$FramesDir, [hashtable]$Header, [hashtable]$Entry) {
+function Add-LiveFrame([string]$FramesDir, [Collections.IDictionary]$Header, [Collections.IDictionary]$Entry) {
     $file = Join-Path $FramesDir 'frames.jsonl'
     if (!(Test-Path -LiteralPath $file)) { $Header['live'] = $true; [IO.File]::WriteAllText($file, ($Header | ConvertTo-Json -Compress -Depth 4) + "`n") }
     [IO.File]::AppendAllText($file, ($Entry | ConvertTo-Json -Compress -Depth 4) + "`n")
@@ -92,7 +92,7 @@ function Get-LiveSeatDir([string]$Root = (Join-Path (Get-ToolsHome) 'locks/live'
 function Get-LiveSeats([string]$Dir = (Get-LiveSeatDir), [scriptblock]$IsStale = { param($r) Test-LockStale $r }) {
     @(foreach ($f in Get-ChildItem -LiteralPath $Dir -Filter 'seat*.json' -ErrorAction SilentlyContinue | Sort-Object Name) {
         $r = Read-LockRecord $f.FullName
-        if (& $IsStale $r) { Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue; continue }
+        if (& $IsStale $r) { Remove-Item -LiteralPath $f.FullName, ($f.FullName -replace '\.json$', '.touch') -Force -ErrorAction SilentlyContinue; continue }
         $r | Add-Member -NotePropertyName File -NotePropertyValue $f.FullName -Force -PassThru
     })
 }

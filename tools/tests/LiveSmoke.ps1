@@ -45,9 +45,10 @@ try {
     $b = Enter-LiveSeat (& $rec 102) $dir 2 $stale
     $c = Enter-LiveSeat (& $rec 103) $dir 2 $stale
     Assert ($a -match 'seat1\.json$' -and $b -match 'seat2\.json$' -and $null -eq $c -and @(Get-LiveSeats $dir $stale).Count -eq 2) 'Seats_TwoAtMost'
+    Set-Content (Join-Path $dir 'seat1.touch') 'x'
     $alive.Remove(101)
     $d = Enter-LiveSeat (& $rec 104) $dir 2 $stale
-    Assert ($d -match 'seat1\.json$' -and (Read-LockRecord $d).Branch -eq 'b104') 'Seats_DeadPidFreesItsSeat'
+    Assert ($d -match 'seat1\.json$' -and (Read-LockRecord $d).Branch -eq 'b104' -and !(Test-Path (Join-Path $dir 'seat1.touch'))) 'Seats_DeadPidFreesItsSeatAndTouch'
     $alive[102] = $t0.AddSeconds(30)   # PID 102 reused by another program
     Assert (@(Get-LiveSeats $dir $stale | ForEach-Object { $_.Pid }) -join ',') -eq '104' 'Seats_ReusedPidIsStale'
     $s = Get-LiveSeats $dir $stale | Select-Object -First 1
@@ -86,6 +87,7 @@ try {
     Set-Content "$frames/00001.png" 'x'
     Add-LiveFrame $frames ([ordered]@{ branch = 'b' }) ([ordered]@{ frame = '00001.png'; label = 'room.after' })
     $m = @(Get-Content "$frames/frames.jsonl" | ForEach-Object { $_ | ConvertFrom-Json })
+    Assert ((Get-Content "$frames/frames.jsonl")[1] -eq '{"frame":"00000.png","label":"room"}') 'Frames_EntryKeepsKeyOrder'
     Assert ($m.Count -eq 3 -and $m[0].live -eq $true -and $m[0].branch -eq 'b' -and $m[2].label -eq 'room.after' -and (Get-NextFrameName $frames) -eq '00002.png') 'Frames_ManifestHeaderOnce'
 } finally {
     Remove-Item -LiteralPath $Temp -Recurse -Force -ErrorAction SilentlyContinue
