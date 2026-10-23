@@ -282,6 +282,8 @@ namespace Unidad.Live.Editor
             if (string.IsNullOrEmpty(Touch)) return;
             EditorApplication.playModeStateChanged += LiveCommands.OnPlayMode;
             EditorApplication.update += Check;
+            // the Game view first, so it is parked (Check, every second) before Play's domain reload blocks this thread
+            if (Application.isBatchMode) LiveCommands.Next(() => { var size = Capture.Wanted(); Capture.EnsureView(size.w, size.h); });
             var title = Environment.GetEnvironmentVariable("UNIDAD_LIVE_TITLE");
             if (!string.IsNullOrEmpty(title))
             {
