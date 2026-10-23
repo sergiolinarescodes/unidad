@@ -195,11 +195,14 @@ try {
         ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Base $base -Extra $extra
     }
     function NewReport { $r = Join-Path ([IO.Path]::GetTempPath()) "unidad-lane/$stamp-report.json"; New-Item -ItemType Directory -Force (Split-Path $r -Parent) | Out-Null; $r }
-    # Prints the report and the log's error headlines; 1 on a headline, else the run's own code.
+    # Prints the report and the log's error headlines; 7 on a boot failure the run quit on itself, 1 on a headline, else
+    # the run's own code.
     function Close-Run([string]$Report, [string]$Log, [int]$Code) {
         if (Test-Path -LiteralPath $Report) { Get-Content -LiteralPath $Report | Out-Host }
-        $hits = @(if (Test-Path -LiteralPath $Log) { Get-LogErrors @(Get-Content -LiteralPath $Log) @($cfg.lane.logIgnore) })
+        $lines = @(if (Test-Path -LiteralPath $Log) { Get-Content -LiteralPath $Log })
+        $hits = @(Get-LogErrors $lines @($cfg.lane.logIgnore))
         $hits | ForEach-Object { Write-Host "lane: log error: $_" }
+        if ($Code -lt 3 -and ($v = Get-RunVerdict $lines 0 0 -Ignore @($cfg.lane.logIgnore))) { Write-Host "lane: $($v.Why)"; $Code = $v.Code }
         Write-Host "lane: exit $Code, $($hits.Count) log error(s) (log $Log)"
         if ($hits -and $Code -lt 3) { 1 } else { $Code }
     }
