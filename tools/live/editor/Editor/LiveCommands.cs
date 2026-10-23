@@ -244,6 +244,12 @@ namespace Unidad.Live.Editor
             if (string.IsNullOrEmpty(Touch)) return;
             EditorApplication.playModeStateChanged += LiveCommands.OnPlayMode;
             EditorApplication.update += Check;
+            var title = Environment.GetEnvironmentVariable("UNIDAD_LIVE_TITLE");
+            if (!string.IsNullOrEmpty(title))
+            {
+                EditorApplication.updateMainWindowTitle += d => d.title = title + " " + d.title;
+                EditorApplication.UpdateMainWindowTitle();
+            }
         }
 
         static double Seconds(string name, double fallback) =>

@@ -130,3 +130,43 @@ function Invoke-LiveCommand([int]$EditorPid, [string[]]$Command, [string[]]$Argu
     if ($value -isnot [pscustomobject]) { throw "unity command $($Command -join ' ') answered no JSON object: $text" }
     $value
 }
+
+# --- the window: minimised, never focused ---------------------------------------------------------------------------
+
+# Starts the editor through `start /min` (SW_SHOWMINNOACTIVE: minimised and not activated, so it never takes the user's
+# keyboard) and returns its Process, found by the project path on its command line.
+function Start-LiveEditor([string]$Editor, [string]$ProjectPath, [string]$LogFile, [int]$TimeoutSec = 60) {
+    $before = @(Get-Process -Name Unity -ErrorAction SilentlyContinue | ForEach-Object Id)
+    & cmd /c start '""' /min "`"$Editor`"" -projectPath "`"$ProjectPath`"" -logFile "`"$LogFile`""
+    $want = ($ProjectPath -replace '\', '/').ToLowerInvariant()
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSec)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        foreach ($p in Get-CimInstance Win32_Process -Filter "Name = 'Unity.exe'" -ErrorAction SilentlyContinue) {
+            if ($before -notcontains $p.ProcessId -and ($p.CommandLine -replace '\', '/').ToLowerInvariant().Contains($want)) { return Get-Process -Id $p.ProcessId }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    throw "no Unity process for $ProjectPath appeared in $TimeoutSec s"
+}
+
+# Minimises every visible top-level window of the process without activating it (Unity restores its saved layout on
+# startup); called while the editor loads. Returns how many it minimised.
+function Hide-LiveWindows([int]$ProcessId) {
+    if (!('UnidadLiveWin32' -as [type])) {
+        Add-Type -Namespace '' -Name UnidadLiveWin32 -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+[DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+public delegate bool EnumProc(IntPtr h, IntPtr l);
+public static int MinimiseAll(uint target) {
+    int n = 0;
+    EnumWindows((h, l) => { uint pid; GetWindowThreadProcessId(h, out pid);
+        if (pid == target && IsWindowVisible(h) && !IsIconic(h)) { ShowWindow(h, 7); n++; } return true; }, IntPtr.Zero);
+    return n;
+}
+'@
+    }
+    [UnidadLiveWin32]::MinimiseAll([uint32]$ProcessId)
+}

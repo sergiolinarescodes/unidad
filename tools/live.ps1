@@ -62,6 +62,7 @@ function Wait-Live([scriptblock]$Test, [int]$Seconds, [string]$What) {
     $deadline = [DateTime]::UtcNow.AddSeconds($Seconds)
     while ($true) {
         Touch-Seat $seat
+        if ($script:hideWindows) { Hide-LiveWindows $seat.Pid | Out-Null }
         if (!(Get-Process -Id $seat.Pid -ErrorAction SilentlyContinue)) { throw "the live editor (PID $($seat.Pid)) exited while waiting for $What; log $($seat.Log)" }
         $s = Get-LiveStatus
         if ($s -and (& $Test $s)) { return $s }
@@ -285,10 +286,12 @@ try {
     New-Item -ItemType Directory -Force "$proj/Logs" | Out-Null
     $log = "$proj/Logs/live-$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')).log"
     $envs = @{ UNIDAD_LAUNCH = $launch; UNIDAD_LIVE_DOOR = $cfg.lane.testbedMethod; UNIDAD_LIVE_TOUCH = $touch; UNIDAD_LIVE_SIZE = $live.size
-        UNIDAD_LIVE_IDLE_SECONDS = "$([int]($idle * 60))"; UNIDAD_LIVE_CAP_SECONDS = "$([int]($cap * 60))" }
-    # Start-Process (ShellExecute): the editor inherits no console handle, so it outlives this script and its caller's pipe.
+        UNIDAD_LIVE_IDLE_SECONDS = "$([int]($idle * 60))"; UNIDAD_LIVE_CAP_SECONDS = "$([int]($cap * 60))"
+        UNIDAD_LIVE_TITLE = "[live $repo/$Branch: closes itself after $idle min idle]" }
+    # `start /min` (in Start-LiveEditor): no console handle, so the editor outlives this script; minimised, never focused.
     foreach ($k in $envs.Keys) { Set-Item "env:$k" $envs[$k] }
-    $p = Start-Process -FilePath $editor -ArgumentList @('-projectPath', "`"$proj`"", '-logFile', "`"$log`"") -PassThru
+    $script:hideWindows = $true
+    $p = Start-LiveEditor $editor $proj $log
     Register-TrackedRun $p 'live' $slotPath $Branch 'live' ([int]($cap * 60) + 300) 'agent' | Out-Null
     $seat.Pid = $p.Id; $seat.ProcessStart = $p.StartTime.ToUniversalTime().ToString('o')
     $seat.Launch = $launch; $seat.Touch = $touch; $seat.Log = $log
@@ -298,6 +301,7 @@ try {
     Wait-Live { param($s) !$s.compiling -and !$s.updating } 1800 'a running editor' | Out-Null
     Say 'editor answering'
     Enter-Play $launch
+    $script:hideWindows = $false
     $s = Get-LiveStatus
     Say "OPEN $repo/$Branch  seat $($seat.Seat)  PID $($p.Id)  $slotPath  game view $($s.width)x$($s.height)  idle $idle min / cap $cap min"
     exit 0
