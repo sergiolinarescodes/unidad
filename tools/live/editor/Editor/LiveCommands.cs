@@ -129,6 +129,7 @@ namespace Unidad.Live.Editor
         {
             if (change == PlayModeStateChange.EnteredPlayMode)
             {
+                Park.All();
                 SessionState.SetString(PendingKey, "");
                 SessionState.SetInt(PlaysKey, SessionState.GetInt(PlaysKey, 0) + 1);
                 SessionState.SetFloat(EnteredKey, (float)EditorApplication.timeSinceStartup);
@@ -202,6 +203,7 @@ namespace Unidad.Live.Editor
                     view.position = new Rect(-6000f, 0f, w, h + 40);
                     view.Show();
                     Park.All();
+                    LiveCommands.Next(Park.All);   // the native window may only exist after this update
                 }
                 if (Application.isBatchMode && view.position.x > -3000f) view.position = new Rect(-6000f, 0f, w, h + 40);
                 if (TargetSize() == (w, h)) return;
