@@ -112,9 +112,9 @@ public sealed class KillOnCloseJob {
     catch { Write-Host "[guard] could not tie PID $($Process.Id) to its launcher ($($_.Exception.Message)); the cap still holds"; $null }
 }
 
-# Waits for a run this tool started; kills its tree at the cap or when STOP appears. Returns the exit code, 124 at the
-# cap, 125 on STOP.
-function Wait-TrackedRun([Diagnostics.Process]$Process, [int]$TimeoutSec) {
+# Waits for a run this tool started; kills its tree at the cap, when STOP appears, or when $Watch (called every second)
+# returns @{ Code; Why }. Returns the exit code, 124 at the cap, 125 on STOP, the watch's code.
+function Wait-TrackedRun([Diagnostics.Process]$Process, [int]$TimeoutSec, [scriptblock]$Watch) {
     $limit = if ($TimeoutSec -gt 0) { $TimeoutSec } else { $MaxRunSeconds }
     $deadline = [DateTime]::UtcNow.AddSeconds($limit)
     $stop = Get-StopFile
@@ -122,6 +122,7 @@ function Wait-TrackedRun([Diagnostics.Process]$Process, [int]$TimeoutSec) {
         $why = $null
         if (Test-Path -LiteralPath $stop) { $why = 'a STOP file appeared'; $code = 125 }
         elseif ([DateTime]::UtcNow -ge $deadline) { $why = "it was still running after $limit s"; $code = 124 }
+        elseif ($Watch -and ($v = & $Watch)) { $why = $v.Why; $code = $v.Code }
         if ($why) {
             $Process.Kill($true)
             $Process.WaitForExit()

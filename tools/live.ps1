@@ -64,6 +64,7 @@ function Wait-Live([scriptblock]$Test, [int]$Seconds, [string]$What) {
         Touch-Seat $seat
         if ($script:hideWindows) { Hide-LiveWindows $seat.Pid | Out-Null }
         if (!(Get-Process -Id $seat.Pid -ErrorAction SilentlyContinue)) { throw "the live editor (PID $($seat.Pid)) exited while waiting for $What; log $($seat.Log)" }
+        if ($v = Get-PlayBootFailure) { throw "$($v.Why) (the editor stays open; fix and -Sync); log $($seat.Log)" }
         $s = Get-LiveStatus
         if ($s -and (& $Test $s)) { return $s }
         if ([DateTime]::UtcNow -ge $deadline) { throw "no $What after $Seconds s (last status: $($s | ConvertTo-Json -Compress)); log $($seat.Log)" }
@@ -73,10 +74,20 @@ function Wait-Live([scriptblock]$Test, [int]$Seconds, [string]$What) {
 function Wait-Ready([int]$Seconds = 300) {
     Wait-Live { param($s) $s.playing -and !$s.pending -and $s.playSeconds -ge $live.settleSeconds } $Seconds 'Play mode'
 }
+# Get-RunVerdict over the editor log written since Enter-Play began (a boot failure ends the wait at once).
+function Get-PlayBootFailure {
+    if ($null -eq $script:playLogFrom -or !$seat.Log -or !(Test-Path -LiteralPath $seat.Log)) { return $null }
+    $fs = [IO.FileStream]::new($seat.Log, 'Open', 'Read', [IO.FileShare]'ReadWrite, Delete')
+    try { $fs.Position = [Math]::Min($script:playLogFrom, $fs.Length); $text = [IO.StreamReader]::new($fs).ReadToEnd() } finally { $fs.Dispose() }
+    Get-RunVerdict ($text -split "`r?`n") 0 0
+}
 function Enter-Play([string]$Launch) {
-    $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Launch))
-    Live @('live', 'play') @('--launch64', $b64) | Out-Null
-    Wait-Ready | Out-Null
+    $script:playLogFrom = if ($seat.Log -and (Test-Path -LiteralPath $seat.Log)) { (Get-Item -LiteralPath $seat.Log).Length } else { 0 }
+    try {
+        $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Launch))
+        Live @('live', 'play') @('--launch64', $b64) | Out-Null
+        Wait-Ready | Out-Null
+    } finally { $script:playLogFrom = $null }
 }
 function Get-LaunchFor($S) { if ($S.TourLaunch) { $S.TourLaunch } else { $S.Launch } }
 

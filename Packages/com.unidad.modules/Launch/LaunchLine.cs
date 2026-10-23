@@ -54,6 +54,23 @@ namespace Unidad.Launch
             return parts;
         }
 
+        /// <summary>
+        /// True when the raw line asks for a self-quitting run (a <c>frames</c> or <c>report</c> setting, the keys every lane
+        /// run carries), read without parsing so a line that fails to parse still answers. Such a run quits on a boot failure.
+        /// </summary>
+        public static bool SelfQuitting(IReadOnlyList<string> processArgs, string environmentLine)
+        {
+            IReadOnlyList<string> args = AfterSentinel(processArgs);
+            if (args.Count == 0)
+            {
+                try { args = Split(environmentLine); }
+                catch (ArgumentException) { return false; }
+            }
+            foreach (var arg in args)
+                if (arg != null && (arg.StartsWith("frames=", StringComparison.Ordinal) || arg.StartsWith("report=", StringComparison.Ordinal))) return true;
+            return false;
+        }
+
         /// <summary><see cref="AfterSentinel"/> when it is non-empty, else <see cref="Split"/> of the environment line; then <see cref="LaunchArgs.Parse"/>.</summary>
         public static LaunchArgs Read(IReadOnlyList<string> processArgs, string environmentLine)
         {

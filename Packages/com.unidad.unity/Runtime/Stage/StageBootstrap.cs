@@ -117,6 +117,10 @@ namespace Unidad.Adapter.Stage
             finally
             {
                 base.OnInitializationFailed(error);
+                // A windowed lane run would otherwise sit on the failure screen until the lane's cap.
+                if (!Application.isBatchMode && LaunchLine.SelfQuitting(Environment.GetCommandLineArgs(),
+                        Environment.GetEnvironmentVariable(LaunchLine.EnvironmentVariable)))
+                    AppQuit.Now(1);
             }
         }
     }
