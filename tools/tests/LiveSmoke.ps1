@@ -120,16 +120,22 @@ public sealed class View
     $asm = '{ "name": "G.View", "references": ["G.Logic"], "versionDefines": [] }'
     $patched = Add-LiveReloadAsmdef $asm
     $p = $patched | ConvertFrom-Json
-    Assert (($p.references -join ',') -eq 'G.Logic,Unity.Pipeline,Unity.Pipeline.Attributes' -and $p.versionDefines[0].define -eq 'UNIDAD_LIVE' -and
-            $p.versionDefines[0].name -eq 'com.unity.pipeline' -and (Add-LiveReloadAsmdef $patched) -ceq $patched) 'Reload_AsmdefPatchIdempotent'
+    Assert (($p.references -join ',') -eq 'G.Logic,Unity.Pipeline,Unity.Pipeline.Attributes' -and (Add-LiveReloadAsmdef $patched) -ceq $patched) 'Reload_AsmdefPatchIdempotent'
+    $ps = "  il2cppX: {}`r`n  scriptingDefineSymbols: {}`r`n  additionalCompilerArguments: {}`r`n"
+    $def = Add-LiveDefine $ps
+    $map = "  scriptingDefineSymbols:`n    Android: A`n    Standalone: FOO;BAR`n  additionalCompilerArguments: {}`n"
+    Assert ($def -ceq "  il2cppX: {}`r`n  scriptingDefineSymbols:`r`n    Standalone: UNIDAD_LIVE`r`n  additionalCompilerArguments: {}`r`n" -and (Add-LiveDefine $def) -ceq $def -and
+            (Add-LiveDefine $map) -ceq $map.Replace('FOO;BAR', 'FOO;BAR;UNIDAD_LIVE') -and
+            (Add-LiveDefine "  scriptingDefineSymbols:`n    Android: A`n") -ceq "  scriptingDefineSymbols:`n    Standalone: UNIDAD_LIVE`n    Android: A`n") 'Reload_ProjectDefineAddedOnce'
     $rs = Join-Path $Temp 'rslot'
     New-Item -ItemType Directory -Force "$rs/Pkg/Samples~/S/View", "$rs/Proj/Assets/Samples/S/View", "$rs/Proj/Library/S" | Out-Null
     Set-Content "$rs/Pkg/Samples~/S/View/Host.cs" $cs; Set-Content "$rs/Proj/Assets/Samples/S/View/Host.cs" $cs; Set-Content "$rs/Proj/Library/S/Host.cs" $cs
     Set-Content "$rs/Proj/Assets/Samples/S/View/S.View.asmdef" $asm; Set-Content "$rs/Pkg/Samples~/S/View/S.View.asmdef" $asm
     Assert ((Resolve-LiveCompiledFile $rs "$rs/Proj" 'Pkg/Samples~/S/View/Host.cs') -eq ("$rs/Proj/Assets/Samples/S/View/Host.cs" -replace '\\', '/') -and
             (Resolve-LiveCompiledFile $rs "$rs/Proj" 'Proj/Assets/X.cs') -eq ("$rs/Proj/Assets/X.cs" -replace '\\', '/')) 'Reload_CompiledFileOfASampleCopy'
-    $first = @(Install-LiveMethodReload $rs); $second = @(Install-LiveMethodReload $rs)
-    Assert ($first.Count -eq 1 -and $first[0] -match 'Proj[\\/]Assets' -and $second.Count -eq 0 -and
+    New-Item -ItemType Directory -Force "$rs/Proj/ProjectSettings" | Out-Null; [IO.File]::WriteAllText("$rs/Proj/ProjectSettings/ProjectSettings.asset", $ps)
+    $first = @(Install-LiveMethodReload $rs "$rs/Proj"); $second = @(Install-LiveMethodReload $rs "$rs/Proj")
+    Assert ($first.Count -eq 2 -and $first[0] -match 'ProjectSettings\.asset$' -and $first[1] -match 'Proj[\\/]Assets' -and $second.Count -eq 0 -and
             [IO.File]::ReadAllText("$rs/Pkg/Samples~/S/View/S.View.asmdef").Trim() -eq $asm) 'Reload_InstallPatchesVisibleAsmdefsOnce'
 
     # Manifest: header once with live=true, then one entry per frame; names count up.

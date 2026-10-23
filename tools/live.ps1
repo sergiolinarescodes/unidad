@@ -108,7 +108,7 @@ function Invoke-Prepare([string]$Slot) {
         Push-Location $Slot
         try { & pwsh -NoProfile -File $cfg.lane.prepare | Out-Null } finally { Pop-Location }
     }
-    if ($live.methodReload) { Install-LiveMethodReload $Slot | ForEach-Object { Write-Host "live: method reload on in $_" } }
+    if ($live.methodReload) { Install-LiveMethodReload $Slot (Get-UnityProjectPath $cfg $Slot) | ForEach-Object { Write-Host "live: method reload on in $_" } }
 }
 # Leave Play, import, compile, play again; a red compile exits 1 with the editor in Edit mode.
 function Invoke-Recompile {

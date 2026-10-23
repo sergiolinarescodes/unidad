@@ -212,17 +212,34 @@ function Select-LiveSyncRoute([string[]]$Routes, [bool]$ReloadPending) {
     @{ Route = $r; Why = $null }
 }
 
-# An asmdef's JSON with the Pipeline's two assemblies referenced and UNIDAD_LIVE defined while com.unity.pipeline is
-# present; the input unchanged when it has both already.
+# An asmdef's JSON with the Pipeline's two assemblies referenced (the attribute, and the weaver's runtime); the input
+# unchanged when it has both.
 function Add-LiveReloadAsmdef([string]$Json) {
     $o = $Json | ConvertFrom-Json -AsHashtable
-    $refs = @($o['references'] | Where-Object { $_ }); $defs = @($o['versionDefines'] | Where-Object { $_ })
+    $refs = @($o['references'] | Where-Object { $_ })
     $missing = @('Unity.Pipeline', 'Unity.Pipeline.Attributes' | Where-Object { $refs -notcontains $_ })
-    $hasDefine = @($defs | Where-Object { $_['define'] -eq 'UNIDAD_LIVE' }).Count -gt 0
-    if (!$missing -and $hasDefine) { return $Json }
+    if (!$missing) { return $Json }
     $o['references'] = @($refs + $missing)
-    if (!$hasDefine) { $o['versionDefines'] = @($defs + [ordered]@{ name = 'com.unity.pipeline'; expression = '0.0.0'; define = 'UNIDAD_LIVE' }) }
     ($o | ConvertTo-Json -Depth 6) + "`n"
+}
+
+# ProjectSettings.asset's YAML with UNIDAD_LIVE in the Standalone scripting defines; the input unchanged when it is
+# there. A project define, not an asmdef versionDefine: the Pipeline parses a reloaded file under the project's defines
+# (EditorUserBuildSettings.activeScriptCompilationDefines), so an asmdef-only symbol hides the attribute from it.
+function Add-LiveDefine([string]$Yaml) {
+    $nl = if ($Yaml.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $head = [regex]::Match($Yaml, '(?m)^  scriptingDefineSymbols:( \{\})?(?=\r?$)')
+    if (!$head.Success) { return $Yaml }
+    $entry = "$nl    Standalone: UNIDAD_LIVE"
+    if ($head.Groups[1].Success) { return $Yaml.Remove($head.Index, $head.Length).Insert($head.Index, "  scriptingDefineSymbols:$entry") }
+    $end = $head.Index + $head.Length
+    $block = [regex]::Match($Yaml.Substring($end), '^(\r?\n    [^\r\n]*)*')
+    $sa = [regex]::Match($block.Value, '(?m)^    Standalone: ?([^\r\n]*)')
+    if (!$sa.Success) { return $Yaml.Insert($end, $entry) }
+    $old = $sa.Groups[1].Value
+    if (@($old -split ';') -contains 'UNIDAD_LIVE') { return $Yaml }
+    $at = $end + $sa.Groups[1].Index
+    $Yaml.Remove($at, $old.Length).Insert($at, ((@($old -split ';' | Where-Object { $_ }) + 'UNIDAD_LIVE') -join ';'))
 }
 
 # The .cs files under $Dir that Unity can see: no Library/Temp/Logs/obj/UserSettings, no dot or `~` folders.
@@ -235,10 +252,15 @@ function Get-LiveSourceFiles([string]$Dir) {
     [IO.Directory]::EnumerateFiles($Dir, '*.cs')
 }
 
-# In the live slot only: every asmdef whose assembly has a .cs naming MethodReload gets Add-LiveReloadAsmdef. Runs
-# after every copy and prepare (a prepare may restore an asmdef). Returns the asmdefs it rewrote.
-# shortcut: reads every visible .cs of the slot each call; cache the list if a large game's -Sync feels it.
-function Install-LiveMethodReload([string]$SlotRoot) {
+# In the live slot only: UNIDAD_LIVE in the project's defines, and every asmdef whose assembly has a .cs naming
+# MethodReload gets Add-LiveReloadAsmdef. Runs after every copy and prepare (either may restore a file). Returns the
+# files it rewrote. shortcut: reads every visible .cs of the slot each call; cache the list if a large game's -Sync feels it.
+function Install-LiveMethodReload([string]$SlotRoot, [string]$ProjectPath) {
+    $settings = Join-Path $ProjectPath 'ProjectSettings/ProjectSettings.asset'
+    if (Test-Path -LiteralPath $settings) {
+        $text = [IO.File]::ReadAllText($settings); $new = Add-LiveDefine $text
+        if ($new -cne $text) { [IO.File]::WriteAllText($settings, $new); $settings }
+    }
     $asmdefs = @{}
     foreach ($f in Get-LiveSourceFiles $SlotRoot) {
         if (![IO.File]::ReadAllText($f).Contains('MethodReload')) { continue }
