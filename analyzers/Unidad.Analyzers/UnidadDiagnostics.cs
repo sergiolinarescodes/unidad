@@ -109,6 +109,6 @@ namespace Unidad.Analyzers
         public static readonly DiagnosticDescriptor UnidadNamespaceInGame = Rule(
             "UD016", "The Unidad namespace belongs to the framework",
             "'{0}' is declared in namespace '{1}' inside assembly '{2}'. Unidad.* belongs to the framework; use " +
-            "Cds.<Module>[.<Feature>].");
+            "{3}.<Module>[.<Feature>].");
     }
 }

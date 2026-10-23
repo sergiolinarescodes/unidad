@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Unidad.Analyzers
 {
@@ -60,10 +61,21 @@ namespace Unidad.Analyzers
                   })
                   .Any(n => n == simpleName || n == simpleName + "Attribute");
 
-        /// <summary>Rules run only on our own assemblies (U-150).</summary>
-        public static bool IsAnalyzed(Compilation c) =>
-            c.AssemblyName != null && (c.AssemblyName.StartsWith("Unidad.", StringComparison.Ordinal) ||
-                                       c.AssemblyName.StartsWith("Cds.", StringComparison.Ordinal));
+        /// <summary>The game's assembly prefix when the consumer names none.</summary>
+        public const string DefaultGamePrefix = "Cds";
+
+        /// <summary>The game's assembly prefix: global analyzer config key <c>build_property.UnidadGamePrefix</c>.</summary>
+        public static string GamePrefix(AnalyzerOptions options) =>
+            options.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("build_property.UnidadGamePrefix", out var p) &&
+            !string.IsNullOrWhiteSpace(p) ? p.Trim() : DefaultGamePrefix;
+
+        /// <summary>Rules run only on our own assemblies: <c>Unidad.*</c> and the game's prefix (U-150).</summary>
+        public static bool IsAnalyzed(Compilation c, AnalyzerOptions options) =>
+            IsAnalyzed(c.AssemblyName, "Unidad") || IsAnalyzed(c.AssemblyName, GamePrefix(options));
+
+        /// <summary>True if <paramref name="assembly"/> is <paramref name="prefix"/>.* .</summary>
+        public static bool IsAnalyzed(string assembly, string prefix) =>
+            assembly != null && assembly.StartsWith(prefix + ".", StringComparison.Ordinal);
 
         /// <summary>An editor assembly is one whose name ends in ".Editor" (U-152).</summary>
         public static bool IsEditorAssembly(Compilation c) =>

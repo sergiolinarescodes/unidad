@@ -27,4 +27,10 @@
   <ItemGroup Condition="'$(IsSmoke)'!='true'">
     <ProjectReference Include="$(RepoRoot)analyzers/Unidad.Analyzers/Unidad.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <!-- The one global analyzer config Unity applies to every assembly (Bee and MSBuild mode) also feeds the sidecar, so a
+       game names its prefix once: build_property.UnidadGamePrefix = <Prefix> (DECISIONS analyzers-game-prefix). A game's
+       props point at <unity project>/Assets/Default.globalconfig the same way. -->
+  <ItemGroup>
+    <EditorConfigFiles Include="$(RepoRoot)Sandbox/Assets/Default.globalconfig" Condition="Exists('$(RepoRoot)Sandbox/Assets/Default.globalconfig')" />
+  </ItemGroup>
 </Project>

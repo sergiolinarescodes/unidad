@@ -6,7 +6,7 @@ namespace Unidad.Analyzers
 {
     /// <summary>
     /// UD016 — the <c>Unidad</c> namespace belongs to the framework. A type declared under <c>Unidad.*</c> in a
-    /// <c>Cds.*</c> assembly would read as framework code in every using and every sync, and collide with the
+    /// game assembly (<c>Cds.*</c>, or the prefix the game names) would read as framework code in every using and every sync, and collide with the
     /// next framework carry. Nested types are covered by their container.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -22,12 +22,13 @@ namespace Unidad.Analyzers
             context.RegisterCompilationStartAction(start =>
             {
                 var assembly = start.Compilation.AssemblyName;
-                if (assembly == null || !assembly.StartsWith("Cds.", System.StringComparison.Ordinal)) return;
-                start.RegisterSymbolAction(c => Analyze(c, assembly), SymbolKind.NamedType);
+                var prefix = SymbolFacts.GamePrefix(start.Options);
+                if (!SymbolFacts.IsAnalyzed(assembly, prefix)) return;
+                start.RegisterSymbolAction(c => Analyze(c, assembly, prefix), SymbolKind.NamedType);
             });
         }
 
-        private static void Analyze(SymbolAnalysisContext context, string assembly)
+        private static void Analyze(SymbolAnalysisContext context, string assembly, string prefix)
         {
             var type = (INamedTypeSymbol)context.Symbol;
             if (type.ContainingType != null || type.IsImplicitlyDeclared) return;
@@ -41,7 +42,7 @@ namespace Unidad.Analyzers
             foreach (var location in type.Locations)
                 if (location.IsInSource)
                     context.ReportDiagnostic(Diagnostic.Create(
-                        UnidadDiagnostics.UnidadNamespaceInGame, location, type.Name, ns, assembly));
+                        UnidadDiagnostics.UnidadNamespaceInGame, location, type.Name, ns, assembly, prefix));
         }
     }
 }

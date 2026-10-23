@@ -30,7 +30,7 @@ namespace Unidad.Analyzers
             context.EnableConcurrentExecution();
             context.RegisterCompilationStartAction(start =>
             {
-                if (!SymbolFacts.IsAnalyzed(start.Compilation)) return;
+                if (!SymbolFacts.IsAnalyzed(start.Compilation, start.Options)) return;
                 if (!SymbolFacts.HasAssemblyAttribute(start.Compilation, OptInAttribute)) return;
 
                 start.RegisterSyntaxNodeAction(AnalyzeTypeDeclaration,
