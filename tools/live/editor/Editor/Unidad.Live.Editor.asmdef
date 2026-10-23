@@ -1,0 +1,14 @@
+{
+    "name": "Unidad.Live.Editor",
+    "rootNamespace": "Unidad.Live.Editor",
+    "references": ["Unity.Pipeline", "Unity.Pipeline.Attributes", "Unity.Pipeline.Editor"],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

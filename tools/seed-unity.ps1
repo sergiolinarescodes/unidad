@@ -25,6 +25,7 @@ $templates = Join-Path $root 'tools/meta-templates'
 # --- 1. A fresh project with one probe of every committed type.
 if (Test-Path -LiteralPath $proj) { Remove-Item -LiteralPath $proj -Recurse -Force }
 $probe = "$proj/Assets/_MetaProbe"
+Set-SearchIndexStartupOff $proj
 New-Item -ItemType Directory -Force "$probe/Code", "$probe/Ref", "$proj/Assets/StreamingAssets/_MetaProbe", "$proj/Assets/Editor", "$proj/Packages" | Out-Null
 function Put([string]$Path, [string]$Text) { [IO.File]::WriteAllText($Path, $Text.Replace("`r`n", "`n")) }
 Put "$proj/Packages/manifest.json" @'

@@ -22,6 +22,8 @@ namespace Unidad.Sandbox.Editor
                 Debug.LogWarning("[testbed] no sample bootstrap compiled (is the Movement sample in Samples~?)");
                 return;
             }
+            // the stage brings its own camera and AudioListener; the default one made "2 audio listeners" warn every frame
+            Object.DestroyImmediate(GameObject.Find("Main Camera"));
             new GameObject("[Boot]").AddComponent(boot);
             EditorApplication.EnterPlaymode();
         }

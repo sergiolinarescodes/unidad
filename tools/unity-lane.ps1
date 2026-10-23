@@ -124,6 +124,7 @@ try {
     $claimRec = Read-SlotClaim $repo $slotName
     if ($claimRec -and $claimRec.ClaimedBy -eq $target) { Write-SlotClaim $repo $slotName $target }
 
+    Set-SearchIndexStartupOff $proj
     $editor = try { Resolve-UnityEditor $proj $UnityPath $cfg.editorVersion } catch { Write-Host "lane: $($_.Exception.Message)"; exit 2 }
     $dotnet = Resolve-UnityDotnet $editor
     # inside sandbox-gate's hold, re-enter it (U-55)
