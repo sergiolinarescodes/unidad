@@ -71,8 +71,10 @@ function ConvertTo-TestbedLine($Cfg, [string]$Start, [string]$Set, [int]$Frames)
     ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Base @(@($Cfg.lane.playerBootArgs) | Where-Object { $_ } | ForEach-Object { $_.Replace('{report}', $report) })
 }
 
-function Get-PlayerRunArgs([string[]]$LaunchLine, [switch]$Graphics, [string]$LogFile) {
-    if ($Graphics) { return @('-screen-fullscreen', '0', '-screen-width', '640', '-screen-height', '360', '-logFile', $LogFile, '--') + @($LaunchLine) }
+# $CaptureSize (repo.json lane.captureSize, [w, h]) replaces the 640x360 window when the line carries capture=.
+function Get-PlayerRunArgs([string[]]$LaunchLine, [switch]$Graphics, [string]$LogFile, [int[]]$CaptureSize = @()) {
+    $size = if (@($CaptureSize).Count -eq 2 -and (@($LaunchLine) -match '^capture=')) { @($CaptureSize) } else { @(640, 360) }
+    if ($Graphics) { return @('-screen-fullscreen', '0', '-screen-width', "$($size[0])", '-screen-height', "$($size[1])", '-logFile', $LogFile, '--') + @($LaunchLine) }
     @('-batchmode', '-nographics', '--') + @($LaunchLine)
 }
 

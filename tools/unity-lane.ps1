@@ -274,7 +274,7 @@ try {
             if ($Run -or $Boot) {
                 $report = NewReport
                 $log = LogFile 'run'
-                $runArgs = Get-PlayerRunArgs (BootLine $report) -Graphics:$Graphics -LogFile $log
+                $runArgs = Get-PlayerRunArgs (BootLine $report) -Graphics:$Graphics -LogFile $log -CaptureSize @($cfg.lane.captureSize)
                 Write-Host "lane: $exe $($runArgs -join ' ')"
                 $r = Invoke-Captured $exe $runArgs ($caps.run * 60) $buildDir
                 if (!$Graphics) { [IO.File]::WriteAllLines($log, [string[]]$r.Lines) }   # -Graphics: the player writes -logFile itself
