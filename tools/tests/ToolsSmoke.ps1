@@ -1,7 +1,7 @@
 # Smoke tests of the toolset base: plain asserts, inputs inline, throwaway temp git repos. Exit 1 on any failure.
 $ErrorActionPreference = 'Stop'
 $tools = Split-Path $PSScriptRoot -Parent
-. (Join-Path $tools 'lib/EditorLock.ps1')
+. (Join-Path $tools 'lib/Lane.ps1')
 $Temp = Join-Path ([IO.Path]::GetTempPath()) "tools-smoke-$PID"
 $failed = 0
 function Assert($cond, $name) { if ($cond) { Write-Host "ok   $name" } else { Write-Host "FAIL $name"; $script:failed++ } }
@@ -97,6 +97,14 @@ try {
     Remove-Item $older
     $after = Invoke-WithEditorLock -Owner 'smoke-c' -WaitMinutes 0.1 -ScriptBlock { 'got it' }
     Assert ($inner -eq 'inner' -and $waited -and $after -eq 'got it' -and !(Test-Path (Join-Path (Get-EditorLockDir) 'unity-editor.lock'))) 'EditorLock_ReentrantPerOwner_FifoAcrossOwners'
+
+    $tb = Get-RepoConfig -Json '{ "name": "g", "github": "o/g", "mainBranch": "master", "slotPrefix": "g",
+        "lane": { "playerBootArgs": ["--set", "frames=60", "--set", "fresh=true", "--set", "report={report}"] } }'
+    $windowed = (ConvertTo-TestbedLine $tb 'room' '' 0) -join ' '
+    $frames = (ConvertTo-TestbedLine $tb 'room' 'fresh=false' 60) -join ' '
+    Assert ($windowed -eq '--set start=room' -and $frames -match '--set report=\S+/g-report\.txt' -and $frames -match '--set frames=60' -and
+            $frames -match '--set fresh=false') 'Testbed_ReportOnlyWithFrames_SetOverridesBase'
+    Assert ((ConvertTo-TestbedLine $tb 'room' '' 60) -contains 'fresh=true') 'Testbed_FramesRunIsFresh'
     if ($IsWindows) {
         $pwshDir = Split-Path (Get-Process -Id $PID).Path -Parent
         $child = & (Get-Process -Id $PID).Path -NoProfile -Command "`$env:PATH = 'C:\WINDOWS\system32;C:\Program Files\Git\cmd;$pwshDir'; . '$tools/lib/UnidadTools.ps1'; (Get-Command bash).Source"
