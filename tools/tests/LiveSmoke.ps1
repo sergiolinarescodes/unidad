@@ -79,6 +79,11 @@ try {
     Assert ((Get-LiveTourCut $tour '' @()).Count -eq 5) 'Tour_NoLabelPlaysAll'
     $threw = $false; try { Get-LiveTourCut $tour 'door' @() | Out-Null } catch { $threw = $true }
     Assert $threw 'Tour_UnknownLabelThrows'
+    $tour2 = @('wait 1', 'shot door.zoom.x', 'act door.zoom { key E }', 'burst door.open')
+    $cut2 = Get-LiveTourCut $tour2 'door.zoom' @()
+    Assert ($cut2.Count -eq 3 -and (Get-LiveTourLabels $tour2) -join ',' -eq 'door.zoom.x,door.zoom,door.open') 'Tour_ExactLabelNotSubstring'
+    $msg = ''; try { Get-LiveTourCut @('wait 1', 'act a { key E }') 'wait' @() | Out-Null } catch { $msg = $_.Exception.Message }
+    Assert ($msg -match 'labels: a\)') 'Tour_RefusalListsLabels'
 
     # Method reload: only body edits of [MethodReload] methods stay in Play; anything else recompiles.
     $cs = @'
@@ -150,6 +155,16 @@ public sealed class View
     $m = @(Get-Content "$frames/frames.jsonl" | ForEach-Object { $_ | ConvertFrom-Json })
     Assert ((Get-Content "$frames/frames.jsonl")[1] -eq '{"frame":"00000.png","label":"room"}') 'Frames_EntryKeepsKeyOrder'
     Assert ($m.Count -eq 3 -and $m[0].live -eq $true -and $m[0].branch -eq 'b' -and $m[2].label -eq 'room.after' -and (Get-NextFrameName $frames) -eq '00002.png') 'Frames_ManifestHeaderOnce'
+
+    # The game holds frames.jsonl open for writing: live still reads it, writes only its own copy.
+    $game = Join-Path $Temp 'game.jsonl'; [IO.File]::WriteAllText($game, '{"branch":"b"}' + "`n" + '{"frame":"0.png","label":"x"}' + "`n")
+    $hold = [IO.File]::Open($game, 'Open', 'Write', 'Read')
+    try {
+        $before = (Get-Item $game).Length
+        Write-LiveManifestCopy $game "$Temp/live-copy.jsonl"
+        $copy = @(Get-Content "$Temp/live-copy.jsonl" | ForEach-Object { $_ | ConvertFrom-Json })
+    } finally { $hold.Dispose() }
+    Assert ($copy.Count -eq 2 -and $copy[0].live -eq $true -and $copy[1].label -eq 'x' -and (Get-Item $game).Length -eq $before) 'Manifest_ReadWhileGameHasItOpen'
 } finally {
     Remove-Item -LiteralPath $Temp -Recurse -Force -ErrorAction SilentlyContinue
 }

@@ -55,7 +55,7 @@ local branch, else `origin/<b>`) and copies your uncommitted files over it.
   7000.0.0a10 it holds no runtime panels (it read black over the Movement sample's HUD). World-space UI and anything a
   camera draws are in it through the cameras. The `tools/look/*.py` scripts read a live folder unchanged.
 - **-Tour** needs `live.tour` in `tools/repo.json`: the launch keys that make the game play a tour file and capture its
-  frames. `-Until <label>` cuts the tour at its first line naming the label and appends `live.tour.hold`, so Play
+  frames. `-Until <label>` cuts the tour at its first `shot|burst|act <label>` line (exact label; a tour without it is refused, exit 2, listing its labels; never reaching it exits 1). live annotates a copy of the game manifest, `<Out>/live-frames.jsonl`, never the game's own file. It appends `live.tour.hold`, so Play
   stays on that label (`-Replay` re-runs it to the same point). Without `-Until` the tour plays to its end and Play is
   re-entered with the plain launch line.
 

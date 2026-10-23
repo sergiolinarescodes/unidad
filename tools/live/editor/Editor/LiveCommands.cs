@@ -215,7 +215,7 @@ namespace Unidad.Live.Editor
         }
 
         // The frame as the player composes it: every screen camera by depth into one w x h target, then every shown
-        // screen-space UI Toolkit panel by sorting order, alpha-blended on top. The Game view's own target holds no
+        // screen-space UI Toolkit panel by sorting order (world-space panels draw into cameras and cannot be captured: skipped), alpha-blended on top. The Game view's own target holds no
         // runtime panels on 7000.0.0a10 (it read black over the Movement sample's HUD), and this needs no Game view.
         internal static byte[] Png(int w, int h)
         {
@@ -235,7 +235,7 @@ namespace Unidad.Live.Editor
                 GL.PushMatrix();
                 GL.LoadPixelMatrix(0, w, h, 0);
                 foreach (var document in Object.FindObjectsByType<UIDocument>()
-                             .Where(d => d.panelSettings != null && d.panelSettings.targetTexture == null && d.rootVisualElement?.panel != null)
+                             .Where(d => d.panelSettings != null && d.panelSettings.targetTexture == null && d.panelSettings.renderMode != PanelRenderMode.WorldSpace && d.rootVisualElement?.panel != null)
                              .OrderBy(d => d.panelSettings.sortingOrder))
                 {
                     var root = document.rootVisualElement;
