@@ -30,6 +30,7 @@
     "playerName": "Sandbox",
     "playerBootArgs": ["--set", "frames=60"],
     "collectRoots": ["Assets"],
+    "logIgnore": [],
     "capsMinutes": { "compile": 15, "import": 15, "exec": 15, "player": 45, "run": 45, "init": 45 },
     "postCompileChecks": []
   },
