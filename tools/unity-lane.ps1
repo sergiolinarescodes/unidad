@@ -15,9 +15,13 @@ The serial Unity lane (U-10, U-61): the only way an agent starts Unity.exe.
   unity-lane.ps1 -Status
 -Graphics runs the player windowed (640x360) instead of -batchmode -nographics. -EditorPlay and every player run scan their
 log: an exception, a LogError/LogException, a boot failure or "Unable to generate text" exits 1 (lane.logIgnore drops
-a headline by regex). -Branch uses the local refs/heads/<b> (commit first), else origin/<b>. Collect roots are relative to the Unity project
-and comma-separated. Exit: 0 green; 1 compile/check/recipe failure; 2 usage or environment; 3 lock wait timed out or
-killed at the hold cap; 4 STOP; 5 the slot is open in an interactive editor.
+a headline by regex). While a -Run/-Boot player or an -EditorPlay editor runs, the lane tails its log every second, prints
+"lane: run t=<s> log=<lines> last=<line>" every 15 s, and ends the run itself on a boot failure ("Initialization failed"
+or an exception before "Initialization complete": exit 7) or, players only, after lane.stallSeconds (default 90)
+without a new log line (exit 8); a game with long silent phases raises it or logs a heartbeat. -Branch uses the local
+refs/heads/<b> (commit first), else origin/<b>. Collect roots are relative to the Unity project and comma-separated.
+Exit: 0 green; 1 compile/check/recipe failure; 2 usage or environment; 3 lock wait timed out or killed at the hold cap;
+4 STOP; 5 the slot is open in an interactive editor; 7 the run's boot failed; 8 the run stalled.
 #>
 param(
     [switch]$Compile, [switch]$Bee, [switch]$Import, [string]$Exec, [switch]$Player, [switch]$Run, [switch]$EditorPlay, [switch]$Graphics,
@@ -41,6 +45,7 @@ $cfg = Get-RepoConfig (Get-RepoRoot $PSScriptRoot)
 $repo = $cfg.name
 $parent = Split-Path $main -Parent
 $caps = $cfg.lane.capsMinutes
+$stall = if ($null -ne $cfg.lane.stallSeconds) { [int]$cfg.lane.stallSeconds } else { 90 }
 
 if ($Status) {
     Show-Launches
@@ -190,11 +195,14 @@ try {
         ConvertTo-LaunchLine -Start $Start -Set $Set -Frames $Frames -Base $base -Extra $extra
     }
     function NewReport { $r = Join-Path ([IO.Path]::GetTempPath()) "unidad-lane/$stamp-report.json"; New-Item -ItemType Directory -Force (Split-Path $r -Parent) | Out-Null; $r }
-    # Prints the report and the log's error headlines; 1 on a headline, else the run's own code.
+    # Prints the report and the log's error headlines; 7 on a boot failure the run quit on itself, 1 on a headline, else
+    # the run's own code.
     function Close-Run([string]$Report, [string]$Log, [int]$Code) {
         if (Test-Path -LiteralPath $Report) { Get-Content -LiteralPath $Report | Out-Host }
-        $hits = @(if (Test-Path -LiteralPath $Log) { Get-LogErrors @(Get-Content -LiteralPath $Log) @($cfg.lane.logIgnore) })
+        $lines = @(if (Test-Path -LiteralPath $Log) { Get-Content -LiteralPath $Log })
+        $hits = @(Get-LogErrors $lines @($cfg.lane.logIgnore))
         $hits | ForEach-Object { Write-Host "lane: log error: $_" }
+        if ($Code -lt 3 -and ($v = Get-RunVerdict $lines 0 0 -Ignore @($cfg.lane.logIgnore))) { Write-Host "lane: $($v.Why)"; $Code = $v.Code }
         Write-Host "lane: exit $Code, $($hits.Count) log error(s) (log $Log)"
         if ($hits -and $Code -lt 3) { 1 } else { $Code }
     }
@@ -276,8 +284,7 @@ try {
                 $log = LogFile 'run'
                 $runArgs = Get-PlayerRunArgs (BootLine $report) -Graphics:$Graphics -LogFile $log -CaptureSize @($cfg.lane.captureSize)
                 Write-Host "lane: $exe $($runArgs -join ' ')"
-                $r = Invoke-Captured $exe $runArgs ($caps.run * 60) $buildDir
-                if (!$Graphics) { [IO.File]::WriteAllLines($log, [string[]]$r.Lines) }   # -Graphics: the player writes -logFile itself
+                $r = Invoke-Captured $exe $runArgs ($caps.run * 60) $buildDir -Watch (New-RunSupervisor $log $stall @($cfg.lane.logIgnore))
                 $exitCode = Close-Run $report $log $(switch ($r.Code) { 124 { 3 } 125 { 4 } default { $r.Code } })
             }
         }
@@ -288,7 +295,7 @@ try {
             Write-Host "lane: UNIDAD_LAUNCH=$launch"
             $code = Invoke-LaneUnity $editor (Get-UnityArgs 'editorplay' $proj $log -Method (Resolve-ExecMethod 'EditorPlay' $cfg.lane.execPrefix)) $owner $caps.run $slotPath $target 'editorplay' $WaitMinutes @{
                 UNIDAD_LAUNCH = $launch; UNIDAD_LANE_EDITOR_PLAY = ($report -replace '\\', '/')
-            }
+            } -Watch (New-RunSupervisor $log 0 @($cfg.lane.logIgnore))   # no stall check: an editor's import phases go silent for minutes
             $exitCode = Close-Run $report $log $code
         }
         'init' { $exitCode = 0 }

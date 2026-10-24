@@ -75,7 +75,7 @@ function ConvertTo-TestbedLine($Cfg, [string]$Start, [string]$Set, [int]$Frames)
 function Get-PlayerRunArgs([string[]]$LaunchLine, [switch]$Graphics, [string]$LogFile, [int[]]$CaptureSize = @()) {
     $size = if (@($CaptureSize).Count -eq 2 -and (@($LaunchLine) -match '^capture=')) { @($CaptureSize) } else { @(640, 360) }
     if ($Graphics) { return @('-screen-fullscreen', '0', '-screen-width', "$($size[0])", '-screen-height', "$($size[1])", '-logFile', $LogFile, '--') + @($LaunchLine) }
-    @('-batchmode', '-nographics', '--') + @($LaunchLine)
+    @('-batchmode', '-nographics') + $(if ($LogFile) { @('-logFile', $LogFile) } else { @() }) + @('--') + @($LaunchLine)
 }
 
 # Unique error headlines of a Unity log, first-seen order: exception lines, boot failures, text generation failures, and
@@ -97,6 +97,57 @@ function Get-LogErrors([string[]]$Lines, [string[]]$Ignore = @()) {
         if ($hit -and !$seen.Contains($hit) -and !(@($Ignore) | Where-Object { $_ -and $hit -match $_ })) { $seen.Add($hit) }
     }
     $seen.ToArray()
+}
+
+# The run supervisor's verdict on a log: @{ Code = 7 } on a boot failure (Initialization failed, or an exception before
+# "Initialization complete"), @{ Code = 8 } after $StallSeconds without a new line (0 = never), else $null.
+# $Last is the last log line seen so far (default: the last of $Lines).
+function Get-RunVerdict([string[]]$Lines, [double]$QuietSeconds, [int]$StallSeconds, [string]$Last, [string[]]$Ignore = @()) {
+    foreach ($l in $Lines) {
+        $t = "$l".Trim()
+        if (!$t) { continue }
+        if ($t -match '\[UnidadBootstrap\] Initialization complete') { break }
+        if (($t -match '\[UnidadBootstrap\] Initialization failed' -or $t -match '^([\w.]+\.)?\w*Exception: ') -and
+            !(@($Ignore) | Where-Object { $_ -and $t -match $_ })) { return @{ Code = 7; Why = "boot failed: $t" } }
+    }
+    if (!$PSBoundParameters.ContainsKey('Last')) { $Last = @($Lines | Where-Object { "$_".Trim() } | Select-Object -Last 1) -join '' }
+    if ($StallSeconds -le 0 -or $QuietSeconds -lt $StallSeconds) { return $null }
+    @{ Code = 8; Why = "stalled $([int]$QuietSeconds) s, last log line: $(if ("$Last".Trim()) { "$Last".Trim() } else { '(none)' })" }
+}
+
+function Format-RunHeartbeat([int]$Seconds, [int]$LineCount, [string]$Last) {
+    $t = "$Last".Trim()
+    if ($t.Length -gt 80) { $t = $t.Substring(0, 77) + '...' }
+    "lane: run t=$Seconds log=$LineCount last=$t"
+}
+
+# A Wait-TrackedRun watch over the log file a run writes: tails it on every call, prints a heartbeat every 15 s, and on
+# a Get-RunVerdict prints "lane: <why>" and returns @{ Code; Why }.
+function New-RunSupervisor([string]$LogFile, [int]$StallSeconds = 90, [string[]]$Ignore = @()) {
+    $s = @{ Log = $LogFile; Stall = $StallSeconds; Ignore = @($Ignore); Count = 0; Last = ''; Tail = ''; Started = $false
+            Reader = $null; Clock = [Diagnostics.Stopwatch]::StartNew(); LastNew = 0.0; NextBeat = 15 }
+    {
+        if (!$s.Reader -and (Test-Path -LiteralPath $s.Log)) {
+            $s.Reader = [IO.StreamReader]::new([IO.FileStream]::new($s.Log, 'Open', 'Read', [IO.FileShare]'ReadWrite, Delete'))
+        }
+        $new = @()
+        if ($s.Reader) {
+            $parts = ($s.Tail + $s.Reader.ReadToEnd()) -split "`r?`n"
+            $s.Tail = $parts[-1]
+            if ($parts.Count -gt 1) {
+                $new = @($parts[0..($parts.Count - 2)])
+                $s.Count += $new.Count; $s.LastNew = $s.Clock.Elapsed.TotalSeconds
+                $nonEmpty = @($new | Where-Object { $_.Trim() })
+                if ($nonEmpty) { $s.Last = $nonEmpty[-1].Trim() }
+            }
+        }
+        $now = $s.Clock.Elapsed.TotalSeconds
+        if ($now -ge $s.NextBeat) { $s.NextBeat += 15; Write-Host (Format-RunHeartbeat ([int]$now) $s.Count $s.Last) }
+        $v = Get-RunVerdict $(if ($s.Started) { @() } else { $new }) ($now - $s.LastNew) $s.Stall $s.Last $s.Ignore
+        if (@($new) -match '\[UnidadBootstrap\] Initialization complete') { $s.Started = $true }
+        if ($v) { Write-Host "lane: $($v.Why)"; if ($s.Reader) { $s.Reader.Dispose(); $s.Reader = $null } }
+        $v
+    }.GetNewClosure()
 }
 
 # Unique "error CS####" / "error UD###" lines, in first-seen order.
@@ -296,7 +347,7 @@ function Test-ProjectOpen([string]$ProjectPath) {
 # Under the machine-wide editor lock: start Unity, tie it to this process, register it, wait with the cap and STOP.
 # Returns the exit code; 3 on the lock wait or the cap, 4 on STOP (unity-lane's exit codes).
 function Invoke-LaneUnity([string]$Editor, [string[]]$Arguments, [string]$Owner, [int]$CapMinutes, [string]$Root, [string]$Branch,
-                          [string]$Mode, [double]$WaitMinutes = 60, [hashtable]$Environment = @{}) {
+                          [string]$Mode, [double]$WaitMinutes = 60, [hashtable]$Environment = @{}, [scriptblock]$Watch) {
     try {
         Invoke-WithEditorLock -Owner $Owner -TimeoutMinutes $CapMinutes -WaitMinutes $WaitMinutes -ScriptBlock {
             if (Test-LaunchStopped) { return 4 }
@@ -308,14 +359,14 @@ function Invoke-LaneUnity([string]$Editor, [string[]]$Arguments, [string]$Owner,
             $job = New-KillOnCloseJob $p
             $run = Register-TrackedRun $p 'lane' $Root $Branch $Mode ($CapMinutes * 60) 'agent'
             Write-Host "lane: Unity PID $($p.Id) $Mode on $Root (cap $CapMinutes min)"
-            try { $code = Wait-TrackedRun $p ($CapMinutes * 60) } finally { Unregister-TrackedRun $run; $null = $job }
+            try { $code = Wait-TrackedRun $p ($CapMinutes * 60) $Watch } finally { Unregister-TrackedRun $run; $null = $job }
             switch ($code) { 124 { 3 } 125 { 4 } default { $code } }
         }
     } catch [TimeoutException] { Write-Host "lane: $($_.Exception.Message)"; 3 }
 }
 
 # Runs a non-Unity child (dotnet, a player) with a cap; returns @{ Code; Lines }.
-function Invoke-Captured([string]$Exe, [string[]]$Arguments, [int]$CapSeconds = 1800, [string]$Cwd, [hashtable]$Environment = @{}) {
+function Invoke-Captured([string]$Exe, [string[]]$Arguments, [int]$CapSeconds = 1800, [string]$Cwd, [hashtable]$Environment = @{}, [scriptblock]$Watch) {
     $psi = [Diagnostics.ProcessStartInfo]::new($Exe)
     foreach ($a in $Arguments) { $psi.ArgumentList.Add($a) }
     foreach ($k in $Environment.Keys) { $psi.Environment[$k] = $Environment[$k] }
@@ -324,7 +375,7 @@ function Invoke-Captured([string]$Exe, [string[]]$Arguments, [int]$CapSeconds = 
     $p = [Diagnostics.Process]::Start($psi)
     $job = New-KillOnCloseJob $p
     $out = $p.StandardOutput.ReadToEndAsync(); $err = $p.StandardError.ReadToEndAsync()
-    $code = Wait-TrackedRun $p $CapSeconds
+    $code = Wait-TrackedRun $p $CapSeconds $Watch
     $null = $job
     @{ Code = $code; Lines = @(($out.Result + "`n" + $err.Result) -split "`r?`n" | Where-Object { $_ }) }
 }

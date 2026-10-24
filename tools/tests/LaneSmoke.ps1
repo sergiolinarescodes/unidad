@@ -162,6 +162,44 @@ try {
     $off = (Get-PlayerRunArgs @('--set', 'start=room') -Graphics -LogFile 'C:/s/p.log' -CaptureSize @(1600, 900)) -join ' '
     Assert ($off -match '-screen-width 640 -screen-height 360 ') 'PlayerRunArgs_CaptureSizeOnlyWithCapture'
     Assert (((Get-PlayerRunArgs $cap -Graphics -LogFile 'C:/s/p.log') -join ' ') -match '-screen-width 640 ') 'PlayerRunArgs_NoKeyKeepsSmall'
+    Assert ((Get-PlayerRunArgs @('--set', 'start=room') -LogFile 'C:/s/p.log') -join ' ') -match '-nographics -logFile C:/s/p\.log -- --set start=room$' 'PlayerRunArgs_BatchWritesTheLogFileToo'
+
+    $failedBoot = @('Mono path[0]', "[UnidadBootstrap] Initialization failed: --set 'look.objects=' must be key=value, such as seed=7.", 'at X.Y ()')
+    $v = Get-RunVerdict $failedBoot 1 90
+    Assert ($v.Code -eq 7 -and $v.Why -eq "boot failed: [UnidadBootstrap] Initialization failed: --set 'look.objects=' must be key=value, such as seed=7.") 'RunVerdict_InitializationFailedIsBootFailed'
+    Assert ((Get-RunVerdict @('Loading', 'System.NullReferenceException: Object reference') 1 90).Code -eq 7 -and
+            !(Get-RunVerdict @('Loading', 'System.NullReferenceException: Object reference') 1 90 -Ignore @('NullReference'))) 'RunVerdict_EarlyExceptionUnlessIgnored'
+    $fine = @('[UnidadBootstrap] Initialization complete. 9 installers.', 'System.InvalidOperationException: later')
+    Assert (!(Get-RunVerdict $fine 10 90) -and !(Get-RunVerdict @('Loading') 10 0)) 'RunVerdict_AfterPlayStartedOrQuietIsFine'
+    $stalled = Get-RunVerdict @('[UnidadBootstrap] Initialization complete. 9 installers.', 'frame 12', '') 91.4 90
+    Assert ($stalled.Code -eq 8 -and $stalled.Why -eq 'stalled 91 s, last log line: frame 12' -and
+            (Get-RunVerdict @() 95 90 -Last 'tick').Why -eq 'stalled 95 s, last log line: tick' -and
+            (Get-RunVerdict @() 95 90).Why -eq 'stalled 95 s, last log line: (none)') 'RunVerdict_StallNamesTheLastLine'
+    Assert ((Format-RunHeartbeat 30 412 '  [Flow] entered room  ') -eq 'lane: run t=30 log=412 last=[Flow] entered room' -and
+            (Format-RunHeartbeat 15 0 $null) -eq 'lane: run t=15 log=0 last=' -and
+            (Format-RunHeartbeat 45 9 ('x' * 100)).Length -eq ('lane: run t=45 log=9 last='.Length + 80)) 'RunHeartbeat_Format'
+
+    # the supervisor tails a growing file and returns the boot failure the moment it is written
+    $runLog = Join-Path $Temp 'run.log'
+    $watch = New-RunSupervisor $runLog 90
+    Assert (!(& $watch)) 'RunSupervisor_NoLogYetIsFine'
+    [IO.File]::WriteAllText($runLog, "Loading`n[UnidadBootstrap] Initialization fa")
+    $first = & $watch
+    [IO.File]::AppendAllText($runLog, "iled: bad`n")
+    $hit = & $watch
+    Assert (!$first -and $hit.Code -eq 7 -and $hit.Why -eq 'boot failed: [UnidadBootstrap] Initialization failed: bad') 'RunSupervisor_TailsAndStopsOnBootFailure'
+    $okLog = Join-Path $Temp 'ok.log'
+    [IO.File]::WriteAllText($okLog, "[UnidadBootstrap] Initialization complete. 1 installers.`nSystem.Exception: after`n")
+    $quiet = New-RunSupervisor $okLog 1
+    Assert (!(& $quiet)) 'RunSupervisor_ExceptionAfterStartIsNotABootFailure'
+    Start-Sleep -Milliseconds 1100
+    $q = & $quiet
+    Assert ($q.Code -eq 8 -and $q.Why -match '^stalled 1 s, last log line: System.Exception: after$') 'RunSupervisor_StallsAfterQuiet'
+
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $p = [Diagnostics.Process]::Start('pwsh', @('-NoProfile', '-Command', 'Start-Sleep 30'))
+    $code = Wait-TrackedRun $p 60 { @{ Code = 7; Why = 'boot failed: x' } }
+    Assert ($code -eq 7 -and $p.HasExited -and $sw.Elapsed.TotalSeconds -lt 10) 'WaitTrackedRun_WatchEndsTheRunWithItsCode'
 } catch {
     Write-Host "FAIL (threw) $($_.Exception.Message) at $($_.InvocationInfo.ScriptLineNumber)"; $failed++
 } finally {
